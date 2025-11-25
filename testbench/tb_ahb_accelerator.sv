@@ -1,7 +1,7 @@
 `timescale 1ns / 10ps
 /* verilator coverage_off */
 
-module tb_pe ();
+module tb_ahb_accelerator ();
 
     localparam CLK_PERIOD = 10ns;
 
@@ -32,7 +32,7 @@ module tb_pe ();
     end
     endtask
 
-    pe #() DUT (.*);
+    ahb_accelerator #() DUT (.*);
 
     initial begin
         n_rst = 1;

@@ -1,6 +1,6 @@
 `timescale 1ns / 10ps
 
-module pe #(
+module ahb_accelerator #(
     // parameters
 ) (
     input clk, n_rst
