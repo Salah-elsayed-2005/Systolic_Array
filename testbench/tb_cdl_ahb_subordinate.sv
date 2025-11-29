@@ -1,7 +1,7 @@
 `timescale 1ns / 10ps
 /* verilator coverage_off */
 
-module tb_ahb_subordinate ();
+module tb_cdl_ahb_subordinate ();
 
     localparam CLK_PERIOD = 10ns;
 
@@ -32,7 +32,7 @@ module tb_ahb_subordinate ();
     end
     endtask
 
-    ahb_subordinate #() DUT (.*);
+    cdl_ahb_subordinate #() DUT (.*);
 
     initial begin
         n_rst = 1;

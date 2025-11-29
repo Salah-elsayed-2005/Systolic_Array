@@ -1,6 +1,6 @@
 `timescale 1ns / 10ps
 
-module controller #(
+module cdl_controller #(
     // parameters
 ) (
     input clk, n_rst

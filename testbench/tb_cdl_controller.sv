@@ -1,7 +1,7 @@
 `timescale 1ns / 10ps
 /* verilator coverage_off */
 
-module tb_controller ();
+module tb_cdl_controller ();
 
     localparam CLK_PERIOD = 10ns;
 
@@ -32,7 +32,7 @@ module tb_controller ();
     end
     endtask
 
-    controller #() DUT (.*);
+    cdl_controller #() DUT (.*);
 
     initial begin
         n_rst = 1;
