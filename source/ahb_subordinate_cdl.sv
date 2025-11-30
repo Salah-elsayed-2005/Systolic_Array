@@ -94,27 +94,25 @@ module ahb_subordinate_cdl #(
         weights = weight_reg;
         inputs = input_reg;
         bias = bias_reg;
-        start_inference = status_reg[0];
-        load_weights = status_reg[1];
-        actv_mode = activation_reg[1:0];
+        start_inference = control_reg[0];
+        load_weights = control_reg[1];
+        actv_mode = activation_reg[2:0];
     end
 
     logic hresp_next, hresp_next1;
     always_comb begin : HRESP_LOGIC
         hresp_next = 0;
         if (hsel_reg) begin
-            if(~hwrite_reg) begin
+            if(~hwrite_reg) begin // read errors
                 case (haddr_reg)
                     8'h00, 8'h01, 8'h02, 8'h03, 8'h04, 8'h05, 8'h06, 8'h07,
                     8'h08, 8'h09, 8'h0A, 8'h0B, 8'h0C, 8'h0D, 8'h0E, 8'h0F: hresp_next = 1;
-                    default: hresp_next = 0;
                 endcase
             end
-            else begin
+            else begin  // write errors
                 case (haddr_reg)
-                    8'h00, 8'h01, 8'h02, 8'h03, 8'h04, 8'h05, 8'h06, 8'h07,
-                    8'h08, 8'h09, 8'h0A, 8'h0B, 8'h0C, 8'h0D, 8'h0E, 8'h0F: hresp_next = 0;
-                    default: hresp_next = 1;
+                    8'h18, 8'h19, 8'h1A, 8'h1B, 8'h1C, 8'h1D, 8'h1E, 8'h1F,
+                    8'h20, 8'h21, 8'h22, 8'h23                             : hresp_next = 1;
                 endcase
             end
         end
@@ -279,16 +277,14 @@ module ahb_subordinate_cdl #(
     end
 
     logic is_raw;
-    logic _8byte_raw;
-    logic _2byte_raw;
-    logic _1byte_raw;
+    logic [7:0] write_end, read_end;
     always_comb begin : READ_LOGIC
         hrdata_next = 64'h0000000000000000;
-        _8byte_raw = (hsize == 3 && ((haddr == haddr_reg) || ((haddr_reg + 7) - haddr) >= 0));
-        _2byte_raw = (hsize == 1) && (((haddr == haddr_reg) || ((haddr_reg + 1) - haddr) >= 0));
-        _1byte_raw = (hsize == 0) && (haddr == haddr_reg);
-        is_raw = (hwrite_reg) && (~hwrite) && ((_8byte_raw) || (_2byte_raw) || (_1byte_raw));
-        r_hready = 1;
+        r_hready = 1; 
+        write_end = haddr_reg + (8'b1 << hsize_reg) - 1;
+        read_end = haddr + (8'b1 << hsize) - 1;
+        is_raw = hwrite_reg && ~hwrite && 
+                !((read_end < haddr_reg) || (haddr > write_end));
         
         if (hsel) begin
             if (htrans == NONSEQ) begin
@@ -351,9 +347,9 @@ module ahb_subordinate_cdl #(
                             8'h20: hrdata_next[7:0] = error_reg[7:0];
                             8'h21: hrdata_next[15:8] = error_reg[15:8];
 
-                            8'h22: hrdata_next[7:0] = is_raw ? control_next[7:0] : control_reg[7:0];
-                            8'h23: hrdata_next[7:0] = status_reg[7:0];
-                            8'h24: hrdata_next[7:0] = is_raw ? activation_next[7:0] : activation_reg[7:0];
+                            8'h22: hrdata_next[7:0] = is_raw ? control_next : control_reg;
+                            8'h23: hrdata_next[7:0] = status_reg;
+                            8'h24: hrdata_next[7:0] = is_raw ? activation_next : activation_reg;
                         endcase
                     end
                 end
