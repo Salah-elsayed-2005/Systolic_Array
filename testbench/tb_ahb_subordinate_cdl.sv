@@ -229,7 +229,7 @@ module tb_ahb_subordinate_cdl ();
         // finish_transactions();
         /****** EXAMPLE CODE ******/
 
-        status = "TESTING";
+        status = "NON-SEQ";
         // write to weights register (buffer not busy)
         enqueue_write(8'h00, 2'd3, 64'hAAAA_AAAA_AAAA_AAAA);
         // write to inputs register (buffer not busy)
@@ -302,6 +302,24 @@ module tb_ahb_subordinate_cdl ();
         data_ready = 0;
         design_busy = 0;
 
+        status = "BURST: INCR8";
+        data = new [8];
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_write(8'h00, 2'd0, BURST_INCR8, data);
+        execute_transactions(8); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
+
+        status = "BURST: INCR4";
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_write(8'h10, 2'd1, BURST_INCR4, data);
+        execute_transactions(4); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
+
+        status = "BURST: WRAP8";
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_read(8'h12, 2'd0, BURST_WRAP8, data);
+        execute_transactions(8); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
 
         @(negedge clk);
         @(negedge clk);

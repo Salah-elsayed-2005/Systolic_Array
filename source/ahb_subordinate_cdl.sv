@@ -10,7 +10,7 @@ module ahb_subordinate_cdl #(
     input logic [1:0] hsize,
     input logic hwrite,
     input logic [63:0] hwdata,
-    input logic hburst,
+    input logic [2:0] hburst,
     output logic [63:0] hrdata,
     output logic hresp,
     output logic hready,
@@ -34,11 +34,21 @@ module ahb_subordinate_cdl #(
     localparam NONSEQ = 2'b10;
     localparam SEQ = 2'b11;
 
+    localparam BURST_SINGLE = 3'd0;
+    localparam BURST_INCR   = 3'd1;
+    localparam BURST_WRAP4  = 3'd2;
+    localparam BURST_INCR4  = 3'd3;
+    localparam BURST_WRAP8  = 3'd4;
+    localparam BURST_INCR8  = 3'd5;
+    localparam BURST_WRAP16 = 3'd6;
+    localparam BURST_INCR16 = 3'd7;
+
     logic hsel_reg;
     logic [7:0] haddr_reg;
     logic [1:0] htrans_reg;
     logic [1:0] hsize_reg;
     logic hwrite_reg;
+    logic [2:0] hburst_reg;
 
     always_ff @(posedge clk, negedge n_rst) begin : REGISTERING_CONTROL_SIGNALS
         if(!n_rst) begin
@@ -47,6 +57,7 @@ module ahb_subordinate_cdl #(
             htrans_reg <= '0;
             hsize_reg <= '0;
             hwrite_reg <= '0;
+            hburst_reg <= '0;
         end
         else begin
             hsel_reg <= hsel;
@@ -54,6 +65,7 @@ module ahb_subordinate_cdl #(
             htrans_reg <= htrans;
             hsize_reg <= hsize;
             hwrite_reg <= hwrite;
+            hburst_reg <= hburst;
         end
     end
 
@@ -190,7 +202,7 @@ module ahb_subordinate_cdl #(
         w_hready = 1;
 
         if(hsel_reg) begin
-            if (htrans_reg == NONSEQ) begin // NON-SEQ
+            if (htrans_reg == NONSEQ || htrans_reg == SEQ) begin // NON-SEQ
                 if (hwrite_reg) begin
                     base_addr_f(haddr_reg, base_addr);
                     byte_offset = haddr_reg - base_addr;
@@ -259,7 +271,7 @@ module ahb_subordinate_cdl #(
         is_raw = hwrite_reg && ~hwrite && !((read_end < haddr_reg) || (haddr > write_end)) && hready;
 
         if (hsel && !hresp) begin
-            if (htrans == NONSEQ) begin
+            if (htrans == NONSEQ || htrans == SEQ) begin
                 if(!hwrite) begin  // READ
                     base_addr_f(haddr, base_addr_r);
                     byte_offset_r = haddr - base_addr_r;
