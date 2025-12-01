@@ -7,10 +7,10 @@ module ahb_subordinate_cdl #(
     input logic hsel,
     input logic [7:0] haddr,
     input logic [1:0] htrans,
-    input logic [2:0] hsize,
+    input logic [1:0] hsize,
     input logic hwrite,
     input logic [63:0] hwdata,
-    input logic hburst,
+    input logic [2:0] hburst,
     output logic [63:0] hrdata,
     output logic hresp,
     output logic hready,
@@ -24,27 +24,40 @@ module ahb_subordinate_cdl #(
     output logic [63:0] weights,
     output logic [63:0] inputs,
     output logic [63:0] bias,
-    output logic [2:0] actv_mode
+    output logic [2:0] actv_mode,
+    output logic store_weights,
+    output logic [7:0] store_inputs
     
 );
-    localparam IDLE = 0;
-    localparam BUSY = 1;
-    localparam NONSEQ = 2;
-    localparam SEQ = 3;
+    localparam IDLE = 2'b00;
+    localparam BUSY = 2'b01;
+    localparam NONSEQ = 2'b10;
+    localparam SEQ = 2'b11;
+
+    localparam BURST_SINGLE = 3'd0;
+    localparam BURST_INCR   = 3'd1;
+    localparam BURST_WRAP4  = 3'd2;
+    localparam BURST_INCR4  = 3'd3;
+    localparam BURST_WRAP8  = 3'd4;
+    localparam BURST_INCR8  = 3'd5;
+    localparam BURST_WRAP16 = 3'd6;
+    localparam BURST_INCR16 = 3'd7;
 
     logic hsel_reg;
     logic [7:0] haddr_reg;
     logic [1:0] htrans_reg;
-    logic [2:0] hsize_reg;
+    logic [1:0] hsize_reg;
     logic hwrite_reg;
+    logic [2:0] hburst_reg;
 
-    always_ff @(posedge clk, negedge n_rst) begin : REGISTERING_WRITE_LOGIC
+    always_ff @(posedge clk, negedge n_rst) begin : REGISTERING_CONTROL_SIGNALS
         if(!n_rst) begin
             hsel_reg <= '0;
             haddr_reg <= '0;
             htrans_reg <= '0;
             hsize_reg <= '0;
             hwrite_reg <= '0;
+            hburst_reg <= '0;
         end
         else begin
             hsel_reg <= hsel;
@@ -52,6 +65,7 @@ module ahb_subordinate_cdl #(
             htrans_reg <= htrans;
             hsize_reg <= hsize;
             hwrite_reg <= hwrite;
+            hburst_reg <= hburst;
         end
     end
 
@@ -102,7 +116,7 @@ module ahb_subordinate_cdl #(
     logic hresp_next, hresp_next1;
     always_comb begin : HRESP_LOGIC
         hresp_next = 0;
-        if (hsel_reg) begin
+        if (hsel_reg && (htrans_reg == NONSEQ || htrans_reg == SEQ)) begin
             if(~hwrite_reg) begin // read errors
                 case (haddr_reg)
                     8'h00, 8'h01, 8'h02, 8'h03, 8'h04, 8'h05, 8'h06, 8'h07,
@@ -112,7 +126,7 @@ module ahb_subordinate_cdl #(
             else begin  // write errors
                 case (haddr_reg)
                     8'h18, 8'h19, 8'h1A, 8'h1B, 8'h1C, 8'h1D, 8'h1E, 8'h1F,
-                    8'h20, 8'h21, 8'h22, 8'h23                             : hresp_next = 1;
+                    8'h20, 8'h21, 8'h23                                   : hresp_next = 1;
                 endcase
             end
         end
@@ -131,13 +145,12 @@ module ahb_subordinate_cdl #(
 
     always_comb begin : HREADY_LOGIC
         hready = 1;
-        if (hsel) begin
+        if (hsel_reg && (htrans_reg == NONSEQ || htrans_reg == SEQ)) begin
             if (hresp_next || !w_hready || !r_hready) begin
                 hready = 0;
             end
         end
     end
-
     always_comb begin : ERROR_LOGIC
         error_next = 16'h0000;
         if (buffer_busy)
@@ -157,11 +170,27 @@ module ahb_subordinate_cdl #(
             status_next[1] = 1'b1;
     end
 
+    function automatic void base_addr_f(
+    input  logic [7:0] addr,
+    output logic [7:0] base
+    );
+        base = 8'h00;
+        if      (addr <= 8'h07) begin  base = 8'h00; end
+        else if (addr <= 8'h0F) begin  base = 8'h08; end
+        else if (addr <= 8'h17) begin  base = 8'h10; end
+        else if (addr <= 8'h1F) begin  base = 8'h18; end
+        else if (addr <= 8'h21) begin  base = 8'h20; end
+        else if (addr == 8'h22) begin  base = 8'h22; end
+        else if (addr == 8'h23) begin  base = 8'h23; end
+        else if (addr == 8'h24) begin  base = 8'h24; end
+    endfunction
 
-    logic store_weights;
-    logic [7:0] store_inputs;
+    logic [7:0] low, high;
+    logic [7:0] byte_offset;
+    logic [7:0] num_bytes;
+    logic [7:0] base_addr;
 
-    always_comb begin : WRITE_LOGIC
+   always_comb begin : WRITE_LOGIC
         weight_next = weight_reg;
         input_next = input_reg;
         bias_next = bias_reg;
@@ -169,98 +198,52 @@ module ahb_subordinate_cdl #(
         activation_next = activation_reg;
 
         store_weights = 0;
-        store_inputs = 0;
+        store_inputs = 8'h00;
         w_hready = 1;
 
         if(hsel_reg) begin
-            if (htrans_reg == NONSEQ) begin // NON-SEQ
+            if (htrans_reg == NONSEQ || htrans_reg == SEQ) begin // NON-SEQ
                 if (hwrite_reg) begin
-                    if (hsize_reg == 3) begin // 8-byte
-                        case(haddr_reg)
-                            8'h00: begin weight_next = hwdata;
-                                         w_hready = 0;
-                                         store_weights = 1;
-                            end
-                            8'h08: begin input_next = hwdata;
-                                         w_hready = 0;
-                                         store_inputs = 8'hFF;
-                            end
-                            8'h10: bias_next = hwdata;
-                        endcase
-                    end
-                    else if (hsize_reg == 2) begin // 4-byte
-                        case(haddr_reg)
-                            8'h00: begin weight_next[31:0] = hwdata[31:0];
-                                         w_hready = 0;
-                                         store_weights = 1;
-                            end
-                            8'h04: begin weight_next[63:32] = hwdata[63:32];
-                                         w_hready = 0;
-                                         store_weights = 1;
-                            end
-                            8'h08: begin input_next[31:0] = hwdata[31:0];
-                                         w_hready = 0;
-                                         store_inputs = 8'hFF;
-                            end
-                            8'h0C: begin input_next[63:32] = hwdata[63:32];
-                                         w_hready = 0;
-                                         store_inputs = 8'hFF;
-                            end
-                            8'h10: bias_next[31:0] = hwdata[31:0];
-                            8'h14: bias_next[63:32] = hwdata[63:32];
-                        endcase
-                    end
-                    else if (hsize_reg == 1) begin  // 2-byte
-                        case(haddr_reg)
-                        //////////// NEED TO COME UP WITH DIFFERENT LOGIC
-                            8'h00: begin weight_next[15:0] = hwdata[15:0];
-                                         store_weights = 1;
-                            end
-                            8'h02: begin weight_next[31:16] = hwdata[31:16];
-                                         store_weights = 1;
-                            end
-                            8'h04: begin weight_next[47:32] = hwdata[47:32];
-                                         store_weights = 1;
-                            end
-                            8'h06: begin weight_next[63:48] = hwdata[63:48];
-                                         store_weights = 1;
-                            end
-                        endcase
-                    end
-                    else if (hsize_reg == 0) begin // 1-byte
-                        case(haddr_reg)
-                            8'h00: weight_next[7:0] = hwdata[7:0];
-                            8'h01: weight_next[15:8] = hwdata[15:8];
-                            8'h02: weight_next[23:16] = hwdata[23:16];
-                            8'h03: weight_next[31:24] = hwdata[31:24];
-                            8'h04: weight_next[39:32] = hwdata[39:32];
-                            8'h05: weight_next[47:40] = hwdata[47:40];
-                            8'h06: weight_next[55:48] = hwdata[55:48];
-                            8'h07: weight_next[63:56] = hwdata[63:56];
-
-                            8'h08: input_next[7:0] = hwdata[7:0];
-                            8'h09: input_next[15:8] = hwdata[15:8];
-                            8'h0A: input_next[23:16] = hwdata[23:16];
-                            8'h0B: input_next[31:24] = hwdata[31:24];
-                            8'h0C: input_next[39:32] = hwdata[39:32];
-                            8'h0D: input_next[47:40] = hwdata[47:40];
-                            8'h0E: input_next[55:48] = hwdata[55:48];
-                            8'h0F: input_next[63:56] = hwdata[63:56];
-
-                            8'h10: bias_next[7:0] = hwdata[7:0];
-                            8'h11: bias_next[15:8] = hwdata[15:8];
-                            8'h12: bias_next[23:16] = hwdata[23:16];
-                            8'h13: bias_next[31:24] = hwdata[31:24];
-                            8'h14: bias_next[39:32] = hwdata[39:32];
-                            8'h15: bias_next[47:40] = hwdata[47:40];
-                            8'h16: bias_next[55:48] = hwdata[55:48];
-                            8'h17: bias_next[63:56] = hwdata[63:56];
-
-                            8'h22: control_next = hwdata[7:0];
-                            8'h24: activation_next = hwdata[7:0];
-                        endcase
-
-                    end
+                    base_addr_f(haddr_reg, base_addr);
+                    byte_offset = haddr_reg - base_addr;
+                    low = {byte_offset, 3'b000};
+                    num_bytes = 8'b1 << hsize_reg; // 1,2,4,8
+                    case(base_addr)
+                        8'h00: begin
+                            case (hsize_reg)
+                                2'd0: weight_next[low +: 8]   = hwdata[low +: 8];
+                                2'd1: weight_next[low +: 16]  = hwdata[low +: 16];
+                                2'd2: weight_next[low +: 32]  = hwdata[low +: 32];
+                                2'd3: weight_next[0   +: 64]  = hwdata[0   +: 64];
+                            endcase
+                            if(buffer_busy) w_hready = 0;
+                            store_weights = 1;
+                        end
+                               
+                        8'h08: begin
+                            case (hsize_reg)
+                                2'd0: begin input_next[low +: 8]   = hwdata[low +: 8];   store_inputs[byte_offset] = 1'b1; end
+                                2'd1: begin input_next[low +: 16]  = hwdata[low +: 16];  store_inputs[byte_offset +: 2] = 2'b11; end
+                                2'd2: begin input_next[low +: 32]  = hwdata[low +: 32];  store_inputs[byte_offset +: 4] = 4'b1111; end
+                                2'd3: begin input_next[0   +: 64]  = hwdata[0   +: 64];  store_inputs = 8'hFF; end
+                            endcase
+                            if(buffer_busy) w_hready = 0;
+                        end   
+                        8'h10: begin
+                            case (hsize_reg)
+                                2'd0: bias_next[low +: 8]   = hwdata[low +: 8];
+                                2'd1: bias_next[low +: 16]  = hwdata[low +: 16];
+                                2'd2: bias_next[low +: 32]  = hwdata[low +: 32];
+                                2'd3: bias_next[0   +: 64]  = hwdata[0   +: 64];
+                            endcase
+                        end
+                        8'h22: if (hsize_reg == 2'd0 && byte_offset == 0) begin
+                                   control_next = hwdata[23:16];
+                               end
+                        8'h24: if (hsize_reg == 2'd0 && byte_offset == 0) begin
+                                   activation_next = hwdata[39:32];
+                               end
+                    endcase
                 end
             end
         end
@@ -278,85 +261,75 @@ module ahb_subordinate_cdl #(
 
     logic is_raw;
     logic [7:0] write_end, read_end;
+    logic [7:0] base_addr_r, byte_offset_r, num_bytes_r, low_r;
+
     always_comb begin : READ_LOGIC
-        hrdata_next = 64'h0000000000000000;
-        r_hready = 1; 
+        hrdata_next = 64'h0;
+        r_hready = 1;
         write_end = haddr_reg + (8'b1 << hsize_reg) - 1;
-        read_end = haddr + (8'b1 << hsize) - 1;
-        is_raw = hwrite_reg && ~hwrite && 
-                !((read_end < haddr_reg) || (haddr > write_end));
-        
-        if (hsel) begin
-            if (htrans == NONSEQ) begin
+        read_end  = haddr     + (8'b1 << hsize)     - 1;
+        is_raw = hwrite_reg && ~hwrite && !((read_end < haddr_reg) || (haddr > write_end)) && hready;
+
+        if (hsel && !hresp) begin
+            if (htrans == NONSEQ || htrans == SEQ) begin
                 if(!hwrite) begin  // READ
-                    if (hsize == 3) begin // 8-byte
-                        case (haddr)
-                            8'h10: hrdata_next = is_raw ? bias_next : bias_reg;
-                            8'h18: begin
-                                hrdata_next = output_reg;
-                                if(buffer_busy) r_hready = 0;
-                            end
-                        endcase
-                    end
-                    else if (hsize == 2) begin // 4-byte
-                        case(haddr)
-                            8'h10: hrdata_next[31:0] = is_raw ? bias_next[31:0] : bias_reg[31:0];
-                            8'h14: hrdata_next[63:32] = is_raw ? bias_next[63:32] : bias_reg[63:32];
-                            8'h18: begin hrdata_next[31:0] = output_reg[31:0];   if(buffer_busy)  r_hready = 0; end
-                            8'h1C: begin hrdata_next[63:32] = output_reg[63:32];  if(buffer_busy)  r_hready = 0; end
-                        endcase
-                    end
-                    else if (hsize == 1) begin // 2-byte
-                    //////////// NEED TO COME UP WITH DIFFERENT LOGIC
-                        case(haddr)
-                            8'h10: hrdata_next[15:0]  = is_raw ? bias_next[15:0] : bias_reg[15:0];
-                            8'h12: hrdata_next[31:16] = is_raw ? bias_next[31:16] : bias_reg[31:16];
-                            8'h14: hrdata_next[47:32] = is_raw ? bias_next[47:32] : bias_reg[47:32];
-                            8'h16: hrdata_next[63:48] = is_raw ? bias_next[63:48] : bias_reg[63:48];
+                    base_addr_f(haddr, base_addr_r);
+                    byte_offset_r = haddr - base_addr_r;
+                    low_r = {byte_offset_r, 3'b000};
+                    num_bytes_r = 8'b1 << hsize; // 1,2,4,8
+                    
+                    case (base_addr_r)
+                        // Bias (RW)
+                        8'h10: begin
+                            case (hsize)
+                                2'd0: hrdata_next[low_r +: 8]   = is_raw ? bias_next[low_r +: 8] : bias_reg[low_r +: 8];
+                                2'd1: hrdata_next[low_r +: 16]  = is_raw ? bias_next[low_r +: 16] : bias_reg[low_r +: 16];
+                                2'd2: hrdata_next[low_r +: 32]  = is_raw ? bias_next[low_r +: 32] : bias_reg[low_r +: 32];
+                                2'd3: hrdata_next[0     +: 64]  = is_raw ? bias_next[0     +: 64] : bias_reg[0     +: 64]; // offset must be 0
+                            endcase
+                        end
 
-                            8'h18: hrdata_next[15:0]  = output_reg[15:0];
-                            8'h1A: hrdata_next[31:16] = output_reg[31:16];
-                            8'h1C: hrdata_next[47:32] = output_reg[47:32];
-                            8'h1E: hrdata_next[63:48] = output_reg[63:48];
+                        // Output (RO)
+                        8'h18: begin
+                            case (hsize)
+                                2'd0: hrdata_next[low_r +: 8]   = output_reg[low_r +: 8];
+                                2'd1: hrdata_next[low_r +: 16]  = output_reg[low_r +: 16];
+                                2'd2: hrdata_next[low_r +: 32]  = output_reg[low_r +: 32];
+                                2'd3: hrdata_next[0     +: 64]  = output_reg[0     +: 64];
+                            endcase
+                            if (buffer_busy) r_hready = 0;
+                        end
 
-                            8'h20: hrdata_next[15:0] = error_reg;
+                        // Error (16-bit RO at 0x20-0x21)
+                        8'h20: begin
+                            case (hsize)
+                                2'd1: if (byte_offset_r == 0) hrdata_next[15:0] = error_reg;
+                                2'd0: hrdata_next[low_r +: 8] = (byte_offset_r == 0) ? error_reg[7:0] : error_reg[15:8];
+                                default: ; // other sizes ignored
+                            endcase
+                        end
 
+                        8'h22: begin
+                            if (hsize == 2'd0 && byte_offset_r == 0)
+                                hrdata_next[23:16] = is_raw ? control_next : control_reg;
+                        end
 
-                        endcase
-                    end
-                    else if(hsize == 0) begin // 1-byte
-                        case (haddr)
-                            8'h10: hrdata_next[7:0]   = is_raw ? bias_next[7:0]   : bias_reg[7:0];
-                            8'h11: hrdata_next[15:8]  = is_raw ? bias_next[15:8]  : bias_reg[15:8];
-                            8'h12: hrdata_next[23:16] = is_raw ? bias_next[23:16] : bias_reg[23:16];
-                            8'h13: hrdata_next[31:24] = is_raw ? bias_next[31:24] : bias_reg[31:24];
-                            8'h14: hrdata_next[39:32] = is_raw ? bias_next[39:32] : bias_reg[39:32];
-                            8'h15: hrdata_next[47:40] = is_raw ? bias_next[47:40] : bias_reg[47:40];
-                            8'h16: hrdata_next[55:48] = is_raw ? bias_next[55:48] : bias_reg[55:48];
-                            8'h17: hrdata_next[63:56] = is_raw ? bias_next[63:56] : bias_reg[63:56];
-                        
-                            8'h18: hrdata_next[7:0]   = output_reg[7:0];
-                            8'h19: hrdata_next[15:8]  = output_reg[15:8];
-                            8'h1A: hrdata_next[23:16] = output_reg[23:16];
-                            8'h1B: hrdata_next[31:24] = output_reg[31:24];
-                            8'h1C: hrdata_next[39:32] = output_reg[39:32];
-                            8'h1D: hrdata_next[47:40] = output_reg[47:40];
-                            8'h1E: hrdata_next[55:48] = output_reg[55:48];
-                            8'h1F: hrdata_next[63:56] = output_reg[63:56];
+                        8'h23: begin
+                            if (hsize == 2'd0 && byte_offset_r == 0)
+                                hrdata_next[31:24] = status_reg;
+                        end
 
-                            8'h20: hrdata_next[7:0] = error_reg[7:0];
-                            8'h21: hrdata_next[15:8] = error_reg[15:8];
+                        8'h24: begin
+                            if (hsize == 2'd0 && byte_offset_r == 0)
+                                hrdata_next[39:32] = is_raw ? activation_next : activation_reg;
+                        end
 
-                            8'h22: hrdata_next[7:0] = is_raw ? control_next : control_reg;
-                            8'h23: hrdata_next[7:0] = status_reg;
-                            8'h24: hrdata_next[7:0] = is_raw ? activation_next : activation_reg;
-                        endcase
-                    end
+                        default: begin
+                        end
+                    endcase
                 end
             end
         end
     end
 
-
 endmodule
-

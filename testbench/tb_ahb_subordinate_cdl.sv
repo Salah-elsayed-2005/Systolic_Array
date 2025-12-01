@@ -43,20 +43,60 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     logic hsel;
-    logic [3:0] haddr;
+    logic [7:0] haddr;
     logic [2:0] hsize;
     logic [2:0] hburst;
     logic [1:0] htrans;
     logic hwrite;
-    logic [31:0] hwdata;
-    logic [31:0] hrdata;
+    logic [63:0] hwdata;
+    logic [63:0] hrdata;
     logic hresp;
     logic hready;
 
+    logic data_ready;
+    logic buffer_busy;
+    logic design_busy;
+    logic [63:0] systolic_out;
+    logic start_inference;
+    logic load_weights;
+    logic [63:0] weights;
+    logic [63:0] inputs;
+    logic [63:0] bias;
+    logic [2:0] actv_mode;
+    logic store_weights;
+    logic [7:0] store_inputs;
+
+    string status;
+
+    ahb_subordinate_cdl DUT ( .clk(clk),
+        .n_rst(n_rst),
+        .hsel(hsel),
+        .haddr(haddr),
+        .hsize(hsize[1:0]),
+        .htrans(htrans),
+        .hwrite(hwrite),
+        .hwdata(hwdata),
+        .hrdata(hrdata),
+        .hresp(hresp),
+        .hready(hready),
+
+        .data_ready(data_ready),
+        .buffer_busy(buffer_busy),
+        .design_busy(design_busy),
+        .systolic_out(systolic_out),
+        .start_inference(start_inference),
+        .load_weights(load_weights),
+        .weights(weights),
+        .inputs(inputs),
+        .bias(bias),
+        .actv_mode(actv_mode),
+        .store_weights(store_weights),
+        .store_inputs(store_inputs)
+    );
     // bus model connections
     ahb_model_updated #(
-        .ADDR_WIDTH(4),
-        .DATA_WIDTH(4)
+        .ADDR_WIDTH(8),
+        .DATA_WIDTH(8)
     ) BFM ( .clk(clk),
         // AHB-Subordinate Side
         .hsel(hsel),
@@ -77,8 +117,8 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     // Read from a register without checking the value
-    task enqueue_poll ( input logic [3:0] addr, input logic [1:0] size );
-    logic [31:0] data [];
+    task enqueue_poll ( input logic [7:0] addr, input logic [1:0] size );
+    logic [63:0] data [];
         begin
             data = new [1];
             data[0] = {32'hXXXX};
@@ -88,7 +128,7 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     // Read from a register until a requested value is observed
-    task poll_until ( input logic [3:0] addr, input logic [1:0] size, input logic [31:0] data);
+    task poll_until ( input logic [7:0] addr, input logic [1:0] size, input logic [63:0] data);
         int iters;
         begin
             for (iters = 0; iters < TIMEOUT; iters++) begin
@@ -103,8 +143,8 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     // Read Transaction, verifying a specific value is read
-    task enqueue_read ( input logic [3:0] addr, input logic [1:0] size, input logic [31:0] exp_read );
-        logic [31:0] data [];
+    task enqueue_read ( input logic [7:0] addr, input logic [1:0] size, input logic [63:0] exp_read );
+        logic [63:0] data [];
         begin
             data = new [1];
             data[0] = exp_read;
@@ -113,8 +153,8 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     // Write Transaction
-    task enqueue_write ( input logic [3:0] addr, input logic [1:0] size, input logic [31:0] wdata );
-        logic [31:0] data [];
+    task enqueue_write ( input logic [7:0] addr, input logic [1:0] size, input logic [63:0] wdata );
+        logic [63:0] data [];
         begin
             data = new [1];
             data[0] = wdata;
@@ -123,8 +163,8 @@ module tb_ahb_subordinate_cdl ();
     endtask
 
     // Write Transaction Intended for a different subordinate from yours
-    task enqueue_fakewrite ( input logic [3:0] addr, input logic [1:0] size, input logic [31:0] wdata );
-        logic [31:0] data [];
+    task enqueue_fakewrite ( input logic [7:0] addr, input logic [1:0] size, input logic [63:0] wdata );
+        logic [63:0] data [];
         begin
             data = new [1];
             data[0] = wdata;
@@ -134,12 +174,12 @@ module tb_ahb_subordinate_cdl ();
 
     // Create a burst read of size based on the burst type.
     // If INCR, burst size dependent on dynamic array size
-    task enqueue_burst_read ( input logic [3:0] base_addr, input logic [1:0] size, input logic [2:0] burst, input logic [31:0] data [] );
+    task enqueue_burst_read ( input logic [7:0] base_addr, input logic [1:0] size, input logic [2:0] burst, input logic [63:0] data [] );
         BFM.enqueue_transaction(1'b1, 1'b0, base_addr, data, 1'b0, {1'b0, size}, burst, 1'b1);
     endtask
 
     // Create a burst write of size based on the burst type.
-    task enqueue_burst_write ( input logic [3:0] base_addr, input logic [1:0] size, input logic [2:0] burst, input logic [31:0] data [] );
+    task enqueue_burst_write ( input logic [7:0] base_addr, input logic [1:0] size, input logic [2:0] burst, input logic [63:0] data [] );
         BFM.enqueue_transaction(1'b1, 1'b1, base_addr, data, 1'b0, {1'b0, size}, burst, 1'b1);
     endtask
 
@@ -153,26 +193,137 @@ module tb_ahb_subordinate_cdl ();
         BFM.wait_done();
     endtask
 
-    logic [31:0] data [];
+    logic [63:0] data [];
 
-    initial begin
-        n_rst = 1;
+    task setup;
+    begin
+        status = "SETUP";
         reset_model();
         reset_dut();
+        n_rst = 0;
+
+        data_ready = 0;
+        buffer_busy = 0;
+        design_busy = 0;
+        systolic_out = 64'h0;
+        @(negedge clk);
+        n_rst = 1;
+        @(negedge clk);
+    end
+    endtask
+
+    initial begin
+        setup();
 
         /****** EXAMPLE CODE ******/
-        // Always put data LSB-aligned. The model will automagically move bytes to their proper position.
-        enqueue_read(3'h1, 1'b0, 31'h00BB);
-        enqueue_write(3'h2, 1'b1, 31'h00BB);
+
+        // // Always put data LSB-aligned. The model will automagically move bytes to their proper position.
+        // enqueue_read(8'h1, 1'b0, 64'h00BB);
+        // enqueue_write(8'h2, 1'b1, 64'h00BB);
         
-        // Example Burst Setup - Dynamic Array Required
-        data = new [8];
-        data = {32'h8888_8888, 32'h7777_7777,32'h6666_6666,32'h5555_5555,32'h4444_4444,32'h3333_3333,32'h2222_2222,32'h1111_1111};
-        enqueue_burst_read(4'hC, 1'b1, BURST_WRAP8, data);
-        execute_transactions(10); // Burst counts as 8 transactions for 8 beats
-        finish_transactions();
+        // // Example Burst Setup - Dynamic Array Required
+        // data = new [8];
+        // data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        // enqueue_burst_read(8'hC, 1'b1, BURST_WRAP8, data);
+        // execute_transactions(10); // Burst counts as 8 transactions for 8 beats
+        // finish_transactions();
         /****** EXAMPLE CODE ******/
 
+        status = "NON-SEQ";
+        // write to weights register (buffer not busy)
+        enqueue_write(8'h00, 2'd3, 64'hAAAA_AAAA_AAAA_AAAA);
+        // write to inputs register (buffer not busy)
+        enqueue_write(8'h08, 2'd3, 64'hBBBB_BBBB_BBBB_BBBB);
+        // write to bias register 
+        enqueue_write(8'h10, 2'd3, 64'hDDDD_DDDD_DDDD_DDDD);
+        execute_transactions(3);
+        finish_transactions();
+        // write to weights register (buffer busy)
+        buffer_busy = 1;
+        enqueue_write(8'h00, 2'd3, 64'hCCCC_CCCC_CCCC_CCCC);
+        execute_transactions(1);
+        finish_transactions();
+        buffer_busy = 0;
+
+        // read bias register
+        buffer_busy = 1;
+        enqueue_read(8'h10, 2'd3, 64'hDDDD_DDDD_DDDD_DDDD);
+        // read error register (lower byte)
+        enqueue_read(8'h20, 2'd0, 64'h0001);
+        // read error register (upper byte)
+        enqueue_read(8'h21, 2'd0, 64'h0100);
+        execute_transactions(3);
+        finish_transactions();
+        buffer_busy = 0;
+
+        // read weight register (hresp error)
+        enqueue_read(8'h00, 2'd3, 64'h0000);
+        enqueue_read(8'h12, 2'd2, 64'h0000_DDDD_DDDD_0000);
+        execute_transactions(2);
+        finish_transactions();
+        
+        // write to output register (hresp error)
+        enqueue_write(8'h18, 2'd3, 64'hEEEE_EEEE_EEEE_EEEE);
+        execute_transactions(1);
+        finish_transactions();
+
+        // write to input register (slice)
+        enqueue_write(8'h0D, 2'd1, 64'hCCCC_CCCC_CCCC_CCCC);
+        execute_transactions(1);
+        finish_transactions();
+
+        // write to bias register (slice)
+        enqueue_write(8'h12, 2'd2, 64'hCCCC_CCCC_CCCC_CCCC);
+        // read from input register (RAW hazard)
+        enqueue_read(8'h11, 2'd1, 64'h0000_0000_00CC_DD00);
+        execute_transactions(2);
+        finish_transactions();
+
+        // write to control register
+        enqueue_write(8'h22, 2'd0, 64'h0000_0000_0000_0001);
+        // read from control register (raw hazard)
+        enqueue_read(8'h22, 2'd0, 64'h0000_0000_0000_0001);
+        execute_transactions(2);
+        finish_transactions();
+
+        data_ready = 1;
+        design_busy = 1;
+        systolic_out = 64'hFFFF_FFFF_FFFF_FFFF;
+
+        // read from status register
+        enqueue_read(8'h23, 2'd0, 64'h0000_0000_0000_0003);
+        // write/read from activation register (raw hazard)
+        enqueue_write(8'h24, 2'd0, 64'h0000_0000_0000_0002);
+        enqueue_read(8'h24, 2'd0, 64'h0000_0000_0000_0002);
+        // read from systolic output register
+        enqueue_read(8'h18, 2'd3, 64'hFFFF_FFFF_FFFF_FFFF);
+        execute_transactions(4);
+        finish_transactions();
+        data_ready = 0;
+        design_busy = 0;
+
+        status = "BURST: INCR8";
+        data = new [8];
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_write(8'h00, 2'd0, BURST_INCR8, data);
+        execute_transactions(8); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
+
+        status = "BURST: INCR4";
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_write(8'h10, 2'd1, BURST_INCR4, data);
+        execute_transactions(4); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
+
+        status = "BURST: WRAP8";
+        data = {64'h8888_8888_8888_8888, 64'h7777_7777_7777_7777,64'h6666_6666_6666_6666,64'h5555_5555_5555_5555,64'h4444_4444_4444_4444,64'h3333_3333_3333_3333,64'h2222_2222_2222_2222,64'h1111_1111_1111_1111};
+        enqueue_burst_read(8'h12, 2'd0, BURST_WRAP8, data);
+        execute_transactions(8); // Burst counts as 8 transactions for 8 beats
+        finish_transactions();
+
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
         $finish;
     end
 endmodule
