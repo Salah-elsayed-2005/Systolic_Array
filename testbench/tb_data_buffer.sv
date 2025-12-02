@@ -20,9 +20,10 @@ module tb_data_buffer ();
     logic [2:0] weight_num;
     logic [2:0] in_num;
     logic [63:0] data;
+    logic out2bias;
 
     //input from activation
-    //input logic [63:0] out_actv,
+    logic [63:0] out_actv;
 
     // output to controller
     logic [63:0] sram_data;
@@ -72,7 +73,7 @@ module tb_data_buffer ();
         repeat (2) @(negedge clk);
         end
         
-        /*
+        
 
         //write second 4 weights
         repeat (4)begin
@@ -105,7 +106,7 @@ module tb_data_buffer ();
         end
 
         
-*/
+    /*
         //read first 4 weights
         weight_num = 0;
         repeat (4) begin
@@ -116,8 +117,8 @@ module tb_data_buffer ();
             weight_num = weight_num + 1;
             repeat (2) @(negedge clk);
         end
+    */
 
-/*
         //read first 4 inputs
        in_num = 0;
         repeat (4) begin
@@ -128,7 +129,18 @@ module tb_data_buffer ();
             repeat (2) @(negedge clk);
         end
 
-        */
+        //read second 4 inputs
+       in_num = 4;
+        repeat (4) begin
+            read_in_enable = 1;
+        repeat (5) @(negedge clk);
+            read_in_enable = 0;
+            in_num = in_num + 1;
+            repeat (2) @(negedge clk);
+        end
+        out_actv = 64'hE7E6E5E4E3E2E1E0;
+        out2bias = 1;
+        repeat (10) @(negedge clk);
 
         $finish;
     end

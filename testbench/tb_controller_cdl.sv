@@ -24,6 +24,7 @@ module tb_controller_cdl ();
     logic data_ready;
     logic buffer_busy,design_busy;
     logic [63:0] systolic_out;
+    logic weights_loaded;
     // output to sys
     logic [63:0] in;
     logic [63:0] weight;
@@ -31,8 +32,8 @@ module tb_controller_cdl ();
     // output to sram_buffer
     logic [63:0] data;
     logic read_w_enable,read_in_enable;
-    logic [3:0] weight_num,in_num;
-    //logic [1:0] hsize,
+    logic [2:0] weight_num,in_num;
+    logic [1:0] hsize;
     logic write_in_enable,write_w_enable;
 
     // clockgen

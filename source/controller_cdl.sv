@@ -20,6 +20,7 @@ module controller_cdl #(
     output logic data_ready,
     output logic buffer_busy,design_busy,
     output logic [63:0] systolic_out,
+    output logic weights_loaded,
     // output to sys
     output logic [63:0] in,
     output logic [63:0] weight,
@@ -27,8 +28,8 @@ module controller_cdl #(
     // output to sram_buffer
     output logic [63:0] data,
     output logic read_w_enable,read_in_enable,
-    output logic [3:0] weight_num,in_num,
-    //output logic [1:0] hsize,
+    output logic [2:0] weight_num,in_num,
+    output logic [1:0] hsize,
     output logic write_in_enable,write_w_enable
 
 );
@@ -46,7 +47,7 @@ module controller_cdl #(
         LOAD_C6 =8,
         LOAD_C7 =9,
         LOAD_C8 =10,
-        weights_loaded=11,
+        Weights_loaded=11,
         Read_i1 =12,
         Operate_D1 =13,
         Read_i2 =14,
@@ -146,11 +147,11 @@ module controller_cdl #(
             end
             LOAD_C8:begin
                 if(sram_state==2)
-                    next_state = weights_loaded;
+                    next_state = Weights_loaded;
                 else
                     next_state = LOAD_C8;
             end
-            weights_loaded: begin
+            Weights_loaded: begin
                 next_state = IDLE;
             end
             Read_i1: begin
@@ -235,12 +236,12 @@ module controller_cdl #(
     endcase
     end
 
-    logic [3:0] weight_count_r, weight_count_n;
-    logic [3:0] in_count_r, in_count_n;
+    logic [2:0] weight_count_r, weight_count_n;
+    logic [2:0] in_count_r, in_count_n;
     always_ff @(posedge clk, negedge n_rst) begin
          if (!n_rst) begin
-            weight_count_r <= 1;
-            in_count_r <= 1;
+            weight_count_r <= 0;
+            in_count_r <= 0;
         end else begin
             weight_count_r <= weight_count_n;
             in_count_r <= in_count_n;
@@ -253,16 +254,16 @@ module controller_cdl #(
 
     // ----- weight counter -----
         if (sram_state==2 && (write_w_enable||read_w_enable)) begin
-            if (weight_count_r == 8)
-                weight_count_n = 1;
+            if (weight_count_r == 7)
+                weight_count_n = 0;
             else
                 weight_count_n = weight_count_r + 1;
         end
 
     // ----- input counter -----
         if (sram_state==2 && (write_in_enable||read_in_enable)) begin
-            if (in_count_r == 8)
-                in_count_n = 1;
+            if (in_count_r == 7)
+                in_count_n = 0;
             else
                 in_count_n = in_count_r + 1;
         end
@@ -276,6 +277,7 @@ module controller_cdl #(
         buffer_busy = 0;
         design_busy = 0;
         systolic_out = 64'b0;
+        weights_loaded = 0;
         in = 64'b0;
         weight = 64'b0;
         data = 64'b0;
@@ -283,6 +285,7 @@ module controller_cdl #(
         operate_f = 0;
         read_w_enable = 0;
         read_in_enable = 0;
+        hsize = 2'b11;
         
         //hsize = 2'b00;
         write_in_enable = 0;
@@ -323,12 +326,13 @@ module controller_cdl #(
                 weight_num = weight_count_r;
                 in_num = in_count_r;
             end
-            weights_loaded: begin
+            Weights_loaded: begin
                 design_busy = 0;
                 buffer_busy = 0;
                 read_w_enable = 0;  
                 weight_num = weight_count_r;
                 in_num = in_count_r;
+                weights_loaded = 1;
             end
             Read_i1, Read_i2, Read_i3, Read_i4,
             Read_i5, Read_i6, Read_i7, Read_i8: begin
