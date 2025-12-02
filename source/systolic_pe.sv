@@ -82,6 +82,11 @@ module systolic_pe #(
         acc_next = acc_reg;          // hold by default
         if (operate_f)               // accumulate only in inference mode
             acc_next = acc_reg + product;
+        
+        if (acc_next > 34'sd127)
+        acc_next = 34'sd127;
+    else if (acc_next < -34'sd128)
+        acc_next = -34'sd128;
     end
 
     assign out_acc = acc_reg;
