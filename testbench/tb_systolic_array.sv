@@ -10,8 +10,11 @@ module tb_systolic_array ();
         $dumpvars;
     end
 
-    logic clk, n_rst;
-
+    logic clk, n_rst, shift_enable, operate_f;
+    logic [63:0] in_bus;
+    logic send2bias;
+    logic [63:0] col_sums, sum_to_bias;
+    
     // clockgen
     always begin
         clk = 0;
@@ -35,13 +38,36 @@ module tb_systolic_array ();
     systolic_array #() DUT (.*);
 
     initial begin
-        n_rst = 1;
+        clk         = 0;
+        n_rst       = 1;
+        shift_enable= 0;
+        operate_f   = 0;
+        send2bias   = 0;
+        in_bus      = '0;
 
         reset_dut;
+
+        // weight load phase: all lanes = 1
+        shift_enable = 1'b1;
+        operate_f    = 1'b0;
+        in_bus       = 64'h0101010101010101;
+        repeat (8) @(posedge clk);
+
+        shift_enable = 1'b0;
+        @(posedge clk);
+
+        operate_f = 1'b1;
+        in_bus    = 64'h0101010101010101;
+        repeat (8) @(posedge clk);
+
+        operate_f = 1'b0;
+        repeat (7) @(posedge clk);  // Wait for data to reach last column
+        send2bias = 1'b1;
+        @(posedge clk);
+
 
         $finish;
     end
 endmodule
 
 /* verilator coverage_on */
-

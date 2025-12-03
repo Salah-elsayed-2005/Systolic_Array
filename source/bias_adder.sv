@@ -23,9 +23,9 @@ module bias_adder #(
             sum_lane[i]  = acc_lane[i] + bias_lane[i];
 
             if (sum_lane[i] > 9'sd127)
-                sat_lane[i] = 8'sd127;
+                sat_lane[i] = 8'd127;
             else if (sum_lane[i] < -9'sd128)
-                sat_lane[i] = -8'sd128;
+                sat_lane[i] = 8'd128;  // -128 in 8-bit two's complement
             else
                 sat_lane[i] = sum_lane[i][7:0];
         end

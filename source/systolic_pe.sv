@@ -38,7 +38,7 @@ module systolic_pe #(
     end
 
     // ---------------- shift register ----------------
-    always_ff @(posedge clk or negedge n_rst) begin : shift_reg
+    always_ff @(posedge clk or negedge n_rst) begin : shift_register
         if (!n_rst)
             shift_reg <= 8'b0;
         else
@@ -72,6 +72,8 @@ module systolic_pe #(
     // ---------------- multiplier ----------------
     logic [7:0] product;
     multiplier m (
+        .clk(clk),
+        .n_rst(n_rst),
         .A(w_reg),
         .B(in),
         .product(product)
@@ -79,14 +81,19 @@ module systolic_pe #(
 
     // ---------------- accumulator next-state logic ----------------
     always_comb begin : accumalator_logic
+        logic signed [8:0] temp_sum;  // 9-bit to handle overflow
         acc_next = acc_reg;          // hold by default
-        if (operate_f)               // accumulate only in inference mode
-            acc_next = acc_reg + product;
         
-        if (acc_next > 34'sd127)
-        acc_next = 34'sd127;
-    else if (acc_next < -34'sd128)
-        acc_next = -34'sd128;
+        if (operate_f) begin  // accumulate only in inference mode
+            temp_sum = $signed(acc_reg) + $signed(product);
+            // saturation logic
+            if (temp_sum > 9'sd127)
+                acc_next = 8'd127;
+            else if (temp_sum < -9'sd128)
+                acc_next = 8'd128;  // -128 in 8-bit signed
+            else
+                acc_next = temp_sum[7:0];
+        end
     end
 
     assign out_acc = acc_reg;

@@ -19,14 +19,14 @@ assign PaddedB = {{8{B[7]}}, B};
 genvar i;
 generate
     for (i = 0; i < 16; i = i + 1) begin
-        assign PartialS[i] = PaddedA[i] ? (PaddedB <<< i) : 32'sd0;
+        assign PartialS[i] = PaddedA[i] ? ({{16{PaddedB[15]}}, PaddedB} <<< i) : 32'sd0;
     end
 endgenerate
 
 always_comb begin
     sumPartial = 34'sd0;
     for (int j = 0; j < 16; j = j + 1)
-        sumPartial = sumPartial + PartialS[j];
+        sumPartial = sumPartial + {{2{PartialS[j][31]}}, PartialS[j]};
 
     if (sumPartial > 34'sd127)
         sumPartial = 34'sd127;
