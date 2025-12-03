@@ -35,6 +35,7 @@ module tb_controller_cdl ();
     logic [2:0] weight_num,in_num;
     logic [1:0] hsize;
     logic write_in_enable,write_w_enable;
+    logic store_output;
 
     // clockgen
     always begin

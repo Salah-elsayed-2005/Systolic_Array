@@ -20,7 +20,7 @@ module tb_data_buffer ();
     logic [2:0] weight_num;
     logic [2:0] in_num;
     logic [63:0] data;
-    logic out2bias;
+    logic store_output;
 
     //input from activation
     logic [63:0] out_actv;
@@ -139,7 +139,7 @@ module tb_data_buffer ();
             repeat (2) @(negedge clk);
         end
         out_actv = 64'hE7E6E5E4E3E2E1E0;
-        out2bias = 1;
+        store_output = 1;
         repeat (10) @(negedge clk);
 
         $finish;

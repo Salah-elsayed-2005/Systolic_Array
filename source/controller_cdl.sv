@@ -30,7 +30,8 @@ module controller_cdl #(
     output logic read_w_enable,read_in_enable,
     output logic [2:0] weight_num,in_num,
     output logic [1:0] hsize,
-    output logic write_in_enable,write_w_enable
+    output logic write_in_enable,write_w_enable,
+    output logic store_output
 
 );
    
@@ -64,7 +65,10 @@ module controller_cdl #(
         Operate_D7 =25,
         Read_i8 =26,
         Operate_D8 =27,
-        Send2Bias = 28
+        Send2Bias = 28,
+        Send2ACTV = 29,
+        Store_out =30,
+        DONE =31
     } state_t;
     state_t current_state,next_state;
 
@@ -228,6 +232,16 @@ module controller_cdl #(
                 next_state = Send2Bias;
             end
             Send2Bias: begin
+                next_state = Send2ACTV;
+            end
+            Send2ACTV: begin
+                next_state = Store_out;
+            end
+            Store_out: begin
+                if(sram_state==2)
+                    next_state = DONE;
+            end
+            DONE: begin
                 next_state = IDLE;
             end
             default: begin
@@ -286,6 +300,7 @@ module controller_cdl #(
         read_w_enable = 0;
         read_in_enable = 0;
         hsize = 2'b11;
+        store_output = 0;
         
         //hsize = 2'b00;
         write_in_enable = 0;
@@ -353,11 +368,25 @@ module controller_cdl #(
                 in_num = in_count_r;
             end
             Send2Bias: begin
-                data_ready = 1;
                 out2bias =1;
                 weight_num = weight_count_r;
                 in_num = in_count_r;
                 
+            end
+            Send2ACTV: begin
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Store_out: begin
+                store_output=1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            DONE: begin
+                data_ready =1;
+                systolic_out = sram_data;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
             end
             default: begin
                 weight_num = weight_count_r;

@@ -15,7 +15,7 @@ module data_buffer #(
     input logic [2:0] weight_num,
     input logic [2:0] in_num,
     input logic [63:0] data,
-    input logic out2bias,
+    input logic store_output,
 
     //input from activation
     input logic [63:0] out_actv,
@@ -138,18 +138,8 @@ module data_buffer #(
          /* verilator lint_on WIDTHCONCAT */
         
 
-        logic  out2bias_d1, out2bias_d2;
 
-        always_ff @(posedge clk or negedge n_rst) begin
-              if (!n_rst) begin
-                 out2bias_d1 <= 1'b0;
-                 out2bias_d2 <= 1'b0;
-            end else begin
-                  out2bias_d1 <= out2bias;
-                  out2bias_d2 <= out2bias_d1;
-             end
-        end
-
+       
 
         always_comb begin
             write_in1_data = 32'h00000000;
@@ -247,7 +237,7 @@ module data_buffer #(
             sram_data = {read_in2_data,read_in1_data};
         end
 
-        if(out2bias_d2)begin 
+        if(store_output)begin 
             
            
             write_out1_data = out_actv[31:0];
