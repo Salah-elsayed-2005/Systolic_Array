@@ -11,8 +11,8 @@ module tb_bias_adder ();
     end
 
     logic clk, n_rst;
+    logic [63:0] out_acc, bias, out_b;
 
-    // clockgen
     always begin
         clk = 0;
         #(CLK_PERIOD / 2.0);
@@ -20,25 +20,34 @@ module tb_bias_adder ();
         #(CLK_PERIOD / 2.0);
     end
 
-    task reset_dut;
-    begin
-        n_rst = 0;
-        @(posedge clk);
-        @(posedge clk);
-        @(negedge clk);
-        n_rst = 1;
-        @(posedge clk);
-        @(posedge clk);
-    end
-    endtask
-
     bias_adder #() DUT (.*);
 
     initial begin
+        clk = 0;
+        n_rst = 0;
+        out_acc = 0;
+        bias = 0;
+        
+        @(posedge clk);
+        @(posedge clk);
         n_rst = 1;
-
-        reset_dut;
-
+        @(posedge clk);
+        
+        out_acc = 64'h0808080808080808;
+        bias = 64'h0202020202020202;
+        @(posedge clk);
+        @(posedge clk);
+        
+        out_acc = 64'h7F7F7F7F7F7F7F7F;
+        bias = 64'h0101010101010101;
+        @(posedge clk);
+        @(posedge clk);
+        
+        out_acc = 64'hFEFEFEFEFEFEFEFE;
+        bias = 64'hFEFEFEFEFEFEFEFE;
+        @(posedge clk);
+        @(posedge clk);
+        
         $finish;
     end
 endmodule
