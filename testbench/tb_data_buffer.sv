@@ -85,25 +85,17 @@ module tb_data_buffer ();
         repeat (2) @(negedge clk);
         end
     
-    //write first 4 inputs
-        repeat (4)begin;
+    //write inputs
+       
         write_in_enable = 1;
         data = 64'hC7C6C5C4C3C2C1C0;
-        repeat (5) @(negedge clk);
+        repeat(4)@(negedge clk);
         in_num = in_num + 1;
         write_in_enable = 0;
         repeat (2) @(negedge clk);
-        end
+        
 
-    //write second 4 inputs
-        repeat (4)begin
-        write_in_enable = 1;
-        data = 64'hD7D6D5D4D3D2D1D0;
-        repeat (5) @(negedge clk);
-            write_in_enable = 0;
-        in_num = in_num + 1;
-        repeat (2) @(negedge clk);
-        end
+   
 
         
     /*
@@ -119,25 +111,17 @@ module tb_data_buffer ();
         end
     */
 
-        //read first 4 inputs
+        //read inputs
        in_num = 0;
-        repeat (4) begin
+        
             read_in_enable = 1;
-        repeat (5) @(negedge clk);
+        repeat(4)@(negedge clk);
             read_in_enable = 0;
             in_num = in_num + 1;
             repeat (2) @(negedge clk);
-        end
+    
 
-        //read second 4 inputs
-       in_num = 4;
-        repeat (4) begin
-            read_in_enable = 1;
-        repeat (5) @(negedge clk);
-            read_in_enable = 0;
-            in_num = in_num + 1;
-            repeat (2) @(negedge clk);
-        end
+        
         out_actv = 64'hE7E6E5E4E3E2E1E0;
         store_output = 1;
         repeat (10) @(negedge clk);

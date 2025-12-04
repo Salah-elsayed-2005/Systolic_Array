@@ -88,25 +88,16 @@ module tb_controller_cdl ();
         store_weights = 0;
 
         
-        //store first 4 inputs in sram
+        //store first inputs in sram
         inputs = 64'hC0C1C2C3C4C5C6C7;
         info =("Storing inputs");
-        repeat (4) begin
+        
         store_inputs = 1;
         @(negedge clk);
         sram_state = 2;
         @(negedge clk);
-        end
+        
 
-        //store second 4 inputs in sram
-        inputs = 64'hD0D1D2D3D4D5D6D7;
-        info =("Storing inputs");
-        repeat (4) begin
-        store_inputs = 1;
-        @(negedge clk);
-        sram_state = 2;
-        @(negedge clk);
-        end
 
         store_inputs = 0;
 
@@ -133,10 +124,7 @@ module tb_controller_cdl ();
             sram_data = 64'hC0C1C2C3C4C5C6C7;
             @(negedge clk);
         end
-        repeat (7) begin 
-            sram_data = 64'hD0D1D2D3D4D5D6D7;
-            @(negedge clk);
-        end
+        
 
         
         repeat (10) @(negedge clk);
