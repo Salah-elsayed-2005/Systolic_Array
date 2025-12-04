@@ -72,7 +72,7 @@ module ahb_accelerator #(
         .clk(clk),
         .n_rst(n_rst),
         .hsel(hsel),
-        .haddr(haddr),
+        .haddr(haddr[7:0]),
         .htrans(htrans),
         .hsize(hsize),
         .hwrite(hwrite),

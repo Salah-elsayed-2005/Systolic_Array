@@ -24,7 +24,6 @@ module systolic_array #(
     genvar r, c;
     generate
         for (r = 0; r < 8; r++) begin : LEFT_INPUTS
-            /
             assign pe_in[r][0] = in_bus[8*r +: 8];
         end
     endgenerate
