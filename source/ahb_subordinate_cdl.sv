@@ -16,6 +16,7 @@ module ahb_subordinate_cdl #(
     output logic hready,
 
     input logic data_ready,
+    input logic weight_ready,
     input logic buffer_busy,
     input logic design_busy,
     input logic [63:0] systolic_out,
@@ -79,6 +80,7 @@ module ahb_subordinate_cdl #(
     logic [7:0] activation_next, activation_reg;
 
     logic w_hready, r_hready;
+    logic [1:0] clear_err;
 
     always_ff @(posedge clk, negedge n_rst) begin : REGISTER_BANK
         if(!n_rst) begin
@@ -153,10 +155,10 @@ module ahb_subordinate_cdl #(
     end
     always_comb begin : ERROR_LOGIC
         error_next = 16'h0000;
-        if (buffer_busy)
+        if (buffer_busy && !clear_err[0])
             error_next[0] = 1'b1;
         
-        if (design_busy || buffer_busy)
+        if ((design_busy || buffer_busy) && !clear_err[1])
             error_next[8] = 1'b1;
         
     end
@@ -201,7 +203,10 @@ module ahb_subordinate_cdl #(
         store_inputs = 8'h00;
         w_hready = 1;
 
-        if(hsel_reg) begin
+        if(data_ready) control_next[0] = 1'b0; // clear start_inference when data is ready
+        if(weight_ready) control_next[1] = 1'b0; // clear load_weights when weights are ready
+
+        if(hsel_reg && !design_busy) begin
             if (htrans_reg == NONSEQ || htrans_reg == SEQ) begin // NON-SEQ
                 if (hwrite_reg) begin
                     base_addr_f(haddr_reg, base_addr);
@@ -238,7 +243,8 @@ module ahb_subordinate_cdl #(
                             endcase
                         end
                         8'h22: if (hsize_reg == 2'd0 && byte_offset == 0) begin
-                                   control_next = hwdata[23:16];
+                                    if(!data_ready && !weight_ready)
+                                        control_next = hwdata[23:16];
                                end
                         8'h24: if (hsize_reg == 2'd0 && byte_offset == 0) begin
                                    activation_next = hwdata[39:32];
@@ -263,12 +269,15 @@ module ahb_subordinate_cdl #(
     logic [7:0] write_end, read_end;
     logic [7:0] base_addr_r, byte_offset_r, num_bytes_r, low_r;
 
+
     always_comb begin : READ_LOGIC
         hrdata_next = 64'h0;
         r_hready = 1;
         write_end = haddr_reg + (8'b1 << hsize_reg) - 1;
         read_end  = haddr     + (8'b1 << hsize)     - 1;
         is_raw = hwrite_reg && ~hwrite && !((read_end < haddr_reg) || (haddr > write_end)) && hready;
+
+        clear_err = 2'b00;
 
         if (hsel && !hresp) begin
             if (htrans == NONSEQ || htrans == SEQ) begin
@@ -303,11 +312,15 @@ module ahb_subordinate_cdl #(
                         // Error (16-bit RO at 0x20-0x21)
                         8'h20: begin
                             case (hsize)
-                                2'd1: if (byte_offset_r == 0) hrdata_next[15:0] = error_reg;
-                                2'd0: hrdata_next[low_r +: 8] = (byte_offset_r == 0) ? error_reg[7:0] : error_reg[15:8];
+                                2'd1: begin if (byte_offset_r == 0) hrdata_next[15:0] = error_reg; clear_err = 2'b11; end
+                                2'd0: begin hrdata_next[low_r +: 8] = (byte_offset_r == 0) ? error_reg[7:0] : error_reg[15:8];
+                                        if (byte_offset_r == 0) clear_err[0] = 1'b1;
+                                        else                    clear_err[1] = 1'b1;
+                                      end
                                 default: ; // other sizes ignored
                             endcase
                         end
+                        
 
                         8'h22: begin
                             if (hsize == 2'd0 && byte_offset_r == 0)

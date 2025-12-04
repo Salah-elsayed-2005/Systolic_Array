@@ -54,6 +54,7 @@ module tb_ahb_subordinate_cdl ();
     logic hready;
 
     logic data_ready;
+    logic weight_ready;
     logic buffer_busy;
     logic design_busy;
     logic [63:0] systolic_out;
@@ -81,6 +82,7 @@ module tb_ahb_subordinate_cdl ();
         .hready(hready),
 
         .data_ready(data_ready),
+        .weight_ready(weight_ready),
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
@@ -203,6 +205,7 @@ module tb_ahb_subordinate_cdl ();
         n_rst = 0;
 
         data_ready = 0;
+        weight_ready = 0;
         buffer_busy = 0;
         design_busy = 0;
         systolic_out = 64'h0;
@@ -229,7 +232,7 @@ module tb_ahb_subordinate_cdl ();
         // finish_transactions();
         /****** EXAMPLE CODE ******/
 
-        status = "NON-SEQ";
+        status = "WRITE: WEIGHTS/INPUTS/BIAS";
         // write to weights register (buffer not busy)
         enqueue_write(8'h00, 2'd3, 64'hAAAA_AAAA_AAAA_AAAA);
         // write to inputs register (buffer not busy)
@@ -245,6 +248,7 @@ module tb_ahb_subordinate_cdl ();
         finish_transactions();
         buffer_busy = 0;
 
+        status = "READ: BIAS+ERROR";
         // read bias register
         buffer_busy = 1;
         enqueue_read(8'h10, 2'd3, 64'hDDDD_DDDD_DDDD_DDDD);
@@ -256,22 +260,26 @@ module tb_ahb_subordinate_cdl ();
         finish_transactions();
         buffer_busy = 0;
 
+        status = "READ: WEIGHTS (ERR)";
         // read weight register (hresp error)
         enqueue_read(8'h00, 2'd3, 64'h0000);
         enqueue_read(8'h12, 2'd2, 64'h0000_DDDD_DDDD_0000);
         execute_transactions(2);
         finish_transactions();
         
+        status = "WRITE: OUTPUT (ERR)";
         // write to output register (hresp error)
         enqueue_write(8'h18, 2'd3, 64'hEEEE_EEEE_EEEE_EEEE);
         execute_transactions(1);
         finish_transactions();
 
+        status = "WRITE: INPUT SLICE";
         // write to input register (slice)
         enqueue_write(8'h0D, 2'd1, 64'hCCCC_CCCC_CCCC_CCCC);
         execute_transactions(1);
         finish_transactions();
 
+        status = "WRITE/READ: BIAS+INPUT RAW";
         // write to bias register (slice)
         enqueue_write(8'h12, 2'd2, 64'hCCCC_CCCC_CCCC_CCCC);
         // read from input register (RAW hazard)
@@ -279,6 +287,7 @@ module tb_ahb_subordinate_cdl ();
         execute_transactions(2);
         finish_transactions();
 
+        status = "WRITE/READ: CONTROL RAW";
         // write to control register
         enqueue_write(8'h22, 2'd0, 64'h0000_0000_0000_0001);
         // read from control register (raw hazard)
@@ -290,6 +299,7 @@ module tb_ahb_subordinate_cdl ();
         design_busy = 1;
         systolic_out = 64'hFFFF_FFFF_FFFF_FFFF;
 
+        status = "READ: STATUS/ACTIV/OUTPUT";
         // read from status register
         enqueue_read(8'h23, 2'd0, 64'h0000_0000_0000_0003);
         // write/read from activation register (raw hazard)
