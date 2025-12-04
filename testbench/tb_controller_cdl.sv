@@ -26,8 +26,8 @@ module tb_controller_cdl ();
     logic [63:0] systolic_out;
     logic weights_loaded;
     // output to sys
-    logic [63:0] in;
-    logic [63:0] weight;
+    logic [63:0] in_bus;
+    //logic [63:0] weight;
     logic shift_enable,operate_f,out2bias;
     // output to sram_buffer
     logic [63:0] data;
@@ -57,6 +57,7 @@ module tb_controller_cdl ();
     end
     endtask
 
+    string info;
     controller_cdl #() DUT (.*);
 
     initial begin
@@ -64,8 +65,9 @@ module tb_controller_cdl ();
 
         reset_dut;
 
-        
+        //store first 4 weights in sram
         weights = 64'hA0A1A2A3A4A5A6A7;
+        info =("Storing weights");
         repeat (4) begin
         store_weights = 1;
         @(negedge clk);
@@ -73,7 +75,9 @@ module tb_controller_cdl ();
         @(negedge clk);
         end
 
+        //store second 4 weights in sram
         weights = 64'hB0B1B2B3B4B5B6B7;
+        info =("Storing weights");
         repeat (4) begin
         store_weights = 1;
         @(negedge clk);
@@ -82,9 +86,11 @@ module tb_controller_cdl ();
         end
         
         store_weights = 0;
+
         
-        
+        //store first 4 inputs in sram
         inputs = 64'hC0C1C2C3C4C5C6C7;
+        info =("Storing inputs");
         repeat (4) begin
         store_inputs = 1;
         @(negedge clk);
@@ -92,7 +98,9 @@ module tb_controller_cdl ();
         @(negedge clk);
         end
 
+        //store second 4 inputs in sram
         inputs = 64'hD0D1D2D3D4D5D6D7;
+        info =("Storing inputs");
         repeat (4) begin
         store_inputs = 1;
         @(negedge clk);
@@ -102,6 +110,8 @@ module tb_controller_cdl ();
 
         store_inputs = 0;
 
+        //load weights in the array
+        info =("Loading weights");
         load_weights = 1;
         repeat (5) begin 
             sram_data = 64'hA0A1A2A3A4A5A6A7;
@@ -112,6 +122,9 @@ module tb_controller_cdl ();
             @(negedge clk);
         end
         load_weights = 0;
+
+        //start inference
+        info =("Starting inference");
         start_inference = 1;
         sram_data = 64'hC0C1C2C3C4C5C6C7;
         repeat (2) @(negedge clk);

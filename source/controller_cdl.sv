@@ -22,8 +22,8 @@ module controller_cdl #(
     output logic [63:0] systolic_out,
     output logic weights_loaded,
     // output to sys
-    output logic [63:0] in,
-    output logic [63:0] weight,
+    output logic [63:0] in_bus,
+    //output logic [63:0] weight,
     output logic shift_enable,operate_f,out2bias,
     // output to sram_buffer
     output logic [63:0] data,
@@ -292,8 +292,8 @@ module controller_cdl #(
         design_busy = 0;
         systolic_out = 64'b0;
         weights_loaded = 0;
-        in = 64'b0;
-        weight = 64'b0;
+        in_bus = 64'b0;
+        //weight = 64'b0;
         data = 64'b0;
         shift_enable = 0;
         operate_f = 0;
@@ -333,7 +333,7 @@ module controller_cdl #(
             end
             LOAD_C1, LOAD_C2, LOAD_C3, LOAD_C4,
             LOAD_C5, LOAD_C6, LOAD_C7, LOAD_C8: begin
-                weight = sram_data;
+                in_bus = sram_data;
                 read_w_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
@@ -351,7 +351,7 @@ module controller_cdl #(
             end
             Read_i1, Read_i2, Read_i3, Read_i4,
             Read_i5, Read_i6, Read_i7, Read_i8: begin
-                in = sram_data;
+                in_bus = sram_data;
                 read_in_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
@@ -361,7 +361,7 @@ module controller_cdl #(
             end
             Operate_D1, Operate_D2, Operate_D3, Operate_D4,
             Operate_D5, Operate_D6, Operate_D7, Operate_D8: begin
-                in = sram_data;
+                in_bus = sram_data;
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;

@@ -32,6 +32,16 @@ module tb_ahb_accelerator ();
     end
     endtask
 
+    logic hsel;
+    logic [9:0] haddr;
+    logic [1:0] htrans;
+    logic [1:0] hsize;
+    logic hwrite;
+    logic [63:0] hwdata;
+    logic [2:0] hburst;
+    logic [63:0] hrdata;
+    logic hready;
+    logic hresp;
     ahb_accelerator #() DUT (.*);
 
     initial begin

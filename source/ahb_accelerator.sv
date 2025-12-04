@@ -46,8 +46,8 @@ module ahb_accelerator #(
 
 
     //contr & sys_array
-    logic [63:0] in;
-    logic [63:0] weight;
+    logic [63:0] in_bus;
+    //logic [63:0] weight;
     logic operate_f;
     logic shift_enable;
     logic out2bias;
@@ -87,20 +87,20 @@ module ahb_accelerator #(
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
-        .weights_loaded(weights_loaded),
+        //.weights_loaded(weights_loaded),
         .weights(weights),
         .inputs(inputs),
         .start_inference(start_inference),
         .load_weights(load_weights), 
         .bias(bias),
-        .activation_mode(activation_mode)
+        .actv_mode(activation_mode)
     );
     
     
     
    
 
-    controller ctrl (
+    controller_cdl ctrl (
         .clk(clk),
         .n_rst(n_rst),
         .start_inference(start_inference),
@@ -116,10 +116,10 @@ module ahb_accelerator #(
         .design_busy(design_busy),
         .systolic_out(systolic_out),
         .weights_loaded(weights_loaded),
-        .in(in),
-        .weight(weight),
+        .in_bus(in_bus),
+        //.weight(weight),
         .shift_enable(shift_enable),
-        .operate_finish(operate_finish),
+        .operate_f(operate_f),
         .out2bias(out2bias),
         .data(data),
         .read_w_enable(read_w_enable),
@@ -155,11 +155,13 @@ module ahb_accelerator #(
         .clk(clk),
         .n_rst(n_rst),
         .send2bias(out2bias),
-        .in(in),                                  // handle it later from sys_array
-        .weight(weight),
+        .in_bus(in_bus),                                  // handle it later from sys_array
         .shift_enable(shift_enable),
         .sum_to_bias(out_acc),
-        .operate_f(operate_f)
+        .operate_f(operate_f),
+        /* verilator lint_off PINCONNECTEMPTY */
+        .col_sums()
+        /* verilator lint_on PINCONNECTEMPTY */
     );
 
     bias_adder bias_add (
