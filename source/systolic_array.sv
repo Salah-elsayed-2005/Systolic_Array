@@ -21,17 +21,13 @@ module systolic_array #(
     logic [7:0] pe_in     [0:7][0:7];
     logic [7:0] pe_shift  [0:7][0:7];
     logic [7:0] pe_outacc [0:7][0:7];
-    // ---------------- Input wiring (left edge) ----------------
     genvar r, c;
-    // Leftmost column of PEs gets data from in_bus
     generate
         for (r = 0; r < 8; r++) begin : LEFT_INPUTS
-            // Each row gets its own 8-bit input from the 64-bit bus
-            // in_bus[8*r +: 8] is SystemVerilog slice: bits 8*r .. 8*r+7
+            /
             assign pe_in[r][0] = in_bus[8*r +: 8];
         end
     endgenerate
-    // Internal columns get their input from the left neighbor's shifted output
     generate
         for (r = 0; r < 8; r++) begin : INTERNAL_INPUTS
             for (c = 1; c < 8; c++) begin : COLS
@@ -39,7 +35,6 @@ module systolic_array #(
             end
         end
     endgenerate
-    // ---------------- PE instantiation (8 x 8) ----------------
     generate
         for (r = 0; r < 8; r++) begin : ROWS
             for (c = 0; c < 8; c++) begin : COLS
