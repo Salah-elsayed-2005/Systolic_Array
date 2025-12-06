@@ -27,7 +27,7 @@ module ahb_subordinate_cdl #(
     output logic [63:0] bias,
     output logic [2:0] actv_mode,
     output logic store_weights,
-    output logic [7:0] store_inputs
+    output logic store_inputs
     
 );
     localparam IDLE = 2'b00;
@@ -81,6 +81,7 @@ module ahb_subordinate_cdl #(
 
     logic w_hready, r_hready;
     logic [1:0] clear_err;
+    logic buffer_f_wr;
 
     always_ff @(posedge clk, negedge n_rst) begin : REGISTER_BANK
         if(!n_rst) begin
@@ -155,7 +156,7 @@ module ahb_subordinate_cdl #(
     end
     always_comb begin : ERROR_LOGIC
         error_next = 16'h0000;
-        if (buffer_busy && !clear_err[0])
+        if (buffer_f_wr && !clear_err[0])
             error_next[0] = 1'b1;
         
         if ((design_busy || buffer_busy) && !clear_err[1])
@@ -199,9 +200,10 @@ module ahb_subordinate_cdl #(
         control_next = control_reg;
         activation_next = activation_reg;
 
-        store_weights = 0;
-        store_inputs = 8'h00;
+        store_weights = 1'b0;
+        store_inputs = 1'b0;
         w_hready = 1;
+        buffer_f_wr = 1'b0;
 
         if(data_ready) control_next[0] = 1'b0; // clear start_inference when data is ready
         if(weight_ready) control_next[1] = 1'b0; // clear load_weights when weights are ready
@@ -221,18 +223,19 @@ module ahb_subordinate_cdl #(
                                 2'd2: weight_next[low +: 32]  = hwdata[low +: 32];
                                 2'd3: weight_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
-                            if(buffer_busy) w_hready = 0;
+                            if(buffer_busy) begin w_hready = 0; buffer_f_wr = 1'b1; end
                             store_weights = 1;
                         end
                                
                         8'h08: begin
                             case (hsize_reg)
-                                2'd0: begin input_next[low +: 8]   = hwdata[low +: 8];   store_inputs[byte_offset] = 1'b1; end
-                                2'd1: begin input_next[low +: 16]  = hwdata[low +: 16];  store_inputs[byte_offset +: 2] = 2'b11; end
-                                2'd2: begin input_next[low +: 32]  = hwdata[low +: 32];  store_inputs[byte_offset +: 4] = 4'b1111; end
-                                2'd3: begin input_next[0   +: 64]  = hwdata[0   +: 64];  store_inputs = 8'hFF; end
+                                2'd0: input_next[low +: 8]   = hwdata[low +: 8]; 
+                                2'd1: input_next[low +: 16]  = hwdata[low +: 16];
+                                2'd2: input_next[low +: 32]  = hwdata[low +: 32];
+                                2'd3: input_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
-                            if(buffer_busy) w_hready = 0;
+                            store_inputs = 1;
+                            if(buffer_busy) begin w_hready = 0; buffer_f_wr = 1'b1; end
                         end   
                         8'h10: begin
                             case (hsize_reg)

@@ -65,7 +65,7 @@ module tb_ahb_subordinate_cdl ();
     logic [63:0] bias;
     logic [2:0] actv_mode;
     logic store_weights;
-    logic [7:0] store_inputs;
+    logic store_inputs;
 
     string status;
 
@@ -279,10 +279,10 @@ module tb_ahb_subordinate_cdl ();
         execute_transactions(1);
         finish_transactions();
 
-        status = "WRITE/READ: BIAS+INPUT RAW";
+        status = "WRITE/READ: BIAS (RAW)";
         // write to bias register (slice)
         enqueue_write(8'h12, 2'd2, 64'hCCCC_CCCC_CCCC_CCCC);
-        // read from input register (RAW hazard)
+        // read from bias register (RAW hazard)
         enqueue_read(8'h11, 2'd1, 64'h0000_0000_00CC_DD00);
         execute_transactions(2);
         finish_transactions();
@@ -309,6 +309,12 @@ module tb_ahb_subordinate_cdl ();
         enqueue_read(8'h18, 2'd3, 64'hFFFF_FFFF_FFFF_FFFF);
         execute_transactions(4);
         finish_transactions();
+
+        // write to weights register (design busy), expected to blocked
+        enqueue_write(8'h00, 2'd3, 64'hAAAA_AAAA_AAAA_AAAA);
+        execute_transactions(1);
+        finish_transactions();
+
         data_ready = 0;
         design_busy = 0;
 
