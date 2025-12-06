@@ -1,3 +1,48 @@
+# Verification Plan Table — AHB Subordinate CDL
+
+## Criteria Definitions
+
+- 1: RW writes update registers; store_weights/store_inputs assert correctly.
+- 2: AHB pipelining between address and data phases is correct.
+- 3: Busy signaling: device busy reflected; hready behavior matches busy paths.
+- 4: Buffer occupancy error: write during buffer busy sets error bit and blocks write.
+- 5: Error clear semantics: reading low/high error bytes clears respective bits.
+- 6: Illegal access protection: correct hresp/hready behavior for write-only/read-only regions.
+- 7: Sliced writes update only targeted bytes per address and size.
+- 8: RAW hazard handling: immediate read after write returns in-flight updated value.
+- 9: Control behavior: start_inference goes high on write and auto-clears when data_ready.
+- 10: Activation behavior: activation value drives actv_mode and supports RAW read.
+- 11: Output RO path: output matches systolic_out; stalls when buffer busy.
+- 12: Design-busy write blocking: writes suppressed while design_busy is active.
+- 13: Burst INCR correctness: addresses increment and data aligned for INCR8/INCR4.
+- 14: Burst WRAP correctness: addresses wrap correctly; read sequence aligned for WRAP8.
+
+## Verification Plan Table
+
+Module Tested | Feature Tested | Test Name | Criteria Number | Description of Test Inputs | Description of Expected Outputs
+--- | --- | --- | --- | --- | ---
+`ahb_subordinate_cdl` | Basic RW writes | Write Weights/Inputs/Bias (64-bit) | 1, 2 | Write 64-bit values to weights at address 0x00, inputs at address 0x08, and bias at address 0x10 with maximum transfer size. | Weights, inputs, and bias registers update to the written values. store_weights and store_inputs signals assert for the write events. Observed timing shows correct address and data phase relationship (pipelining).
+`ahb_subordinate_cdl` | Busy signaling | Set Buffer Busy | 3 | Assert buffer busy prior to subsequent transactions. | Device busy state is reflected in status; error bit for device busy is set when applicable; any reads that should stall due to buffer conditions show hready de-assertion behavior consistent with busy handling.
+`ahb_subordinate_cdl` | Buffer occupancy error | Write Weights while Buffer Busy | 4 | With buffer busy asserted, attempt to write a full-width value to weights at address 0x00. | Buffer occupancy error bit (lower byte bit 0) is set. The weights register does not change (write blocked). The transfer exhibits busy behavior (stall) as appropriate.
+`ahb_subordinate_cdl` | Bias read and error clear | Read Bias; Clear Error Low; Clear Error High | 5 | Read bias at address 0x10 with maximum size. Then read error lower byte at address 0x20 and error upper byte at address 0x21. | Bias returns the most recently written value. After reading the lower error byte, the buffer occupancy error bit clears. After reading the upper error byte, the device busy error bit clears. Both bytes clear according to which byte is read.
+`ahb_subordinate_cdl` | Illegal access protection | Read Weights (Write-Only) | 6 | Read weights at address 0x00 with maximum size. | The access is rejected: error response asserted and ready de-asserts during the error. No valid data is produced; weights content remains unchanged.
+`ahb_subordinate_cdl` | Illegal access protection | Write Output (Read-Only) | 6 | Write a full-width value to output at address 0x18. | The access is rejected: error response asserted and ready de-asserts during the error. Output content remains sourced by the systolic output only.
+`ahb_subordinate_cdl` | Sliced writes | Input Slice Write (2 bytes) | 7 | Write two bytes to inputs at address 0x0D using a two-byte transfer size. | Only the targeted two bytes within the inputs register are modified at the correct offset; all other bytes remain unchanged.
+`ahb_subordinate_cdl` | Sliced writes | Bias Slice Write (4 bytes) | 7 | Write four bytes to bias at address 0x12 using a four-byte transfer size. | The four bytes update the correct slice within the bias register at the computed offset; surrounding bytes remain unchanged.
+`ahb_subordinate_cdl` | RAW hazards | Read Bias after Slice Write | 8 | Perform a sliced write to bias as above, then immediately read two bytes overlapping the modified region at an adjacent address (e.g., 0x11). | The immediate read returns the in-flight updated data for the overlapping bytes, demonstrating RAW hazard handling; bytes outside the overlap reflect previous register values.
+`ahb_subordinate_cdl` | Control behavior | Set Start Inference | 9 | Write a value with bit 0 set to the control register at address 0x22 (one-byte access). | The control register updates and the start_inference signal asserts high.
+`ahb_subordinate_cdl` | RAW hazards (control) | Read Control Immediately | 8, 9 | Immediately read back the control register at address 0x22 after writing. | The read returns the just-written control value, confirming RAW hazard behavior on the control path.
+`ahb_subordinate_cdl` | Control auto-clear | Data Ready De-asserts Start | 9 | Assert data ready after start_inference is high. | Start_inference de-asserts automatically, indicating processing completion and readiness to fetch output data.
+`ahb_subordinate_cdl` | Output/Status/Error update | Design Busy and Systolic Output | 3, 11 | Assert design busy and drive the systolic output to a known value (all ones). | Output register reflects the driven systolic output. Status indicates design busy. Error status for device busy is set as defined. Any read-dependent stalls occur per busy logic.
+`ahb_subordinate_cdl` | Status read timing | Read Status | 3, 11 | Read status at address 0x23 as a single byte. | The fetched status byte reflects current flags (e.g., data ready and design busy) and is returned with correct read timing.
+`ahb_subordinate_cdl` | Activation behavior | Write Activation | 10 | Write a single-byte activation value to address 0x24. | Activation register updates and actv_mode reflects the lower bits of the activation value.
+`ahb_subordinate_cdl` | RAW hazards (activation) | Read Activation Immediately | 8, 10 | Immediately read activation at address 0x24 after writing. | The read returns the just-written activation value, demonstrating RAW hazard handling for activation.
+`ahb_subordinate_cdl` | Output RO read | Read Output Data | 11 | Read output at address 0x18 with maximum size after driving a known systolic output value. | The returned data matches the systolic output value. If buffer busy is active, read may stall appropriately.
+`ahb_subordinate_cdl` | Design-busy write blocking | Write Weights while Design Busy | 12 | With design busy asserted, attempt to write a full-width value to weights at address 0x00. | The write is blocked and weights do not change; any busy-related ready behavior appears as defined.
+`ahb_subordinate_cdl` | Burst INCR | Weights Burst INCR8 (bytes) | 13 | Issue an incrementing burst of eight byte-wide writes starting at address 0x00. | Addresses increment per beat and bytes are placed correctly into the weights register across the sequence; final register content matches the burst data order.
+`ahb_subordinate_cdl` | Burst INCR | Bias Burst INCR4 (halfwords) | 13 | Issue an incrementing burst of four halfword-wide writes starting at address 0x10. | Addresses increment correctly and halfwords align properly within the bias register; final content matches the provided sequence.
+`ahb_subordinate_cdl` | Burst WRAP | Bias Burst Read WRAP8 (bytes) | 14 | Issue a wrapping burst read of eight byte beats starting at address 0x12. | Read addresses wrap correctly within the designated region, and the returned byte sequence matches the expected wrapped order and alignment.
+
 # Verification Plan Table (Plain English)
 
 ## Criteria
