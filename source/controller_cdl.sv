@@ -232,20 +232,20 @@ module controller_cdl #(
     end
 
     logic [2:0] weight_count_r, weight_count_n;
-    logic [2:0] in_count_r, in_count_n;
+    //logic [2:0] in_count_r, in_count_n;
     always_ff @(posedge clk, negedge n_rst) begin
          if (!n_rst) begin
             weight_count_r <= 0;
-            in_count_r <= 0;
+            //in_count_r <= 0;
         end else begin
             weight_count_r <= weight_count_n;
-            in_count_r <= in_count_n;
+            //in_count_r <= in_count_n;
         end
     end
 
     always_comb begin
         weight_count_n = weight_count_r;
-        in_count_n     = in_count_r;
+        //in_count_n     = in_count_r;
 
     // ----- weight counter -----
         if (sram_state==2 && (write_w_enable||read_w_enable)) begin
@@ -256,12 +256,12 @@ module controller_cdl #(
         end
 
     // ----- input counter -----
-        if (sram_state==2 && (write_in_enable||read_in_enable)) begin
-            if (in_count_r == 7)
-                in_count_n = 0;
-            else
-                in_count_n = in_count_r + 1;
-        end
+    //    if (sram_state==2 && (write_in_enable||read_in_enable)) begin
+    //        if (in_count_r == 7)
+    //            in_count_n = 0;
+    //        else
+    //            in_count_n = in_count_r + 1;
+    //    end
     end
 
 
@@ -274,7 +274,6 @@ module controller_cdl #(
         systolic_out = 64'b0;
         weights_loaded = 0;
         in_bus = 64'b0;
-        //weight = 64'b0;
         data = 64'b0;
         shift_enable = 0;
         operate_f = 0;
@@ -291,7 +290,8 @@ module controller_cdl #(
         case(current_state)
             IDLE: begin
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
                 design_busy = 0;
                 buffer_busy = 0;
             end
@@ -301,14 +301,16 @@ module controller_cdl #(
                 design_busy = 1;
                 write_w_enable = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             LOAD_input: begin
                 data = inputs;
                 buffer_busy = 1;
                 design_busy = 1;
                 write_in_enable = 1;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
                 weight_num = weight_count_r;
             
             end
@@ -320,111 +322,128 @@ module controller_cdl #(
                 design_busy = 1;
                 shift_enable = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Weights_loaded: begin
                 design_busy = 0;
                 buffer_busy = 0;
                 read_w_enable = 0;  
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
                 weights_loaded = 1;
             end
             Read_i1: begin
                 read_in_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
                 weight_num = weight_count_r;
                 
             end
             Operate_D1: begin
-                in_bus = sram_data[7:0];
+                in_bus[7:0] = sram_data[7:0];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D2: begin
-                in_bus = sram_data[15:8];
+                in_bus[15:8] = sram_data[15:8];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D3: begin
-                in_bus = sram_data[23:16];
+                in_bus[23:16] = sram_data[23:16];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D4: begin
-                in_bus = sram_data[31:24];
+                in_bus[31:24] = sram_data[31:24];
                 operate_f = 1;
                 design_busy = 1;
-                weight_num = weight_count_r;        
+                weight_num = weight_count_r;  
+                //in_num = in_count_r;
+                in_num = 0;      
             end 
             Operate_D5: begin
-                in_bus = sram_data[39:32];
+                in_bus[39:32] = sram_data[39:32];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D6: begin
-                in_bus = sram_data[47:40];
+                in_bus[47:40] = sram_data[47:40];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D7: begin
-                in_bus = sram_data[55:48];
+                in_bus[55:48] = sram_data[55:48];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Operate_D8: begin
-                in_bus = sram_data[63:56];
+                in_bus[63:56] = sram_data[63:56];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Wait_1, Wait_2, Wait_3, Wait_4, Wait_5, Wait_6: begin
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Send2Bias: begin
                 design_busy = 1;
                 out2bias =1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
-                
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Send2ACTV: begin
                 design_busy = 1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             Store_out: begin
                 design_busy = 1;
                 store_output=1;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             DONE: begin
                 data_ready =1;
                 systolic_out = sram_data;
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
             end
             default: begin
                 weight_num = weight_count_r;
-                in_num = in_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
                 design_busy = 0;
                 buffer_busy = 0;
             end
