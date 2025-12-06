@@ -4,12 +4,12 @@ module systolic_pe #(
     // parameters
 ) (
     input  logic       clk,
-    input  logic       n_rst,          // active-low reset
-    input  logic [7:0] in,             // input data (weight or activation)
-    input  logic       shift_enable,   // used to drive load_w (see below)
-    input  logic       operate_f,      // 1 = inference mode
-    output logic [7:0] shifted,        // horizontal output
-    output logic [7:0] out_acc         // vertical output (accumulated)
+    input  logic       n_rst,          
+    input  logic [7:0] in,             
+    input  logic       shift_enable,   
+    input  logic       operate_f,      
+    output logic [7:0] shifted,        
+    output logic [7:0] out_acc         
 );
 
     // internal state

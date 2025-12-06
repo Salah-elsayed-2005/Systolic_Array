@@ -57,14 +57,25 @@ module tb_systolic_array ();
         @(posedge clk);
 
         operate_f = 1'b1;
-        in_bus    = 64'h0101010101010101;
-        repeat (8) @(posedge clk);
+        
+        // Inference phase: feed one activation per row, staggered by one cycle each
+        // Cycle 1: x1 = 0x01 enters row 0 (PE(0,0))
+        // Cycle 2: x2 = 0x02 enters row 1 (PE(1,0))
+        // ...
+        // Cycle 8: x8 = 0x08 enters row 7 (PE(7,0))
+        for (int cycle = 1; cycle <= 8; cycle++) begin
+            // Create in_bus where only one row has a non-zero value
+            // Byte for row (cycle-1) gets the value 'cycle', all others are 0
+            in_bus = 64'h0000000000000000;
+            in_bus[8*(cycle-1) +: 8] = 8'(cycle);
+            @(posedge clk);
+        end
 
         operate_f = 1'b0;
-        repeat (7) @(posedge clk);  // Wait for data to reach last column
+        in_bus    = '0;
+        repeat (7) @(posedge clk);  // Wait for data to reach last column (drain phase)
         send2bias = 1'b1;
         @(posedge clk);
-
 
         $finish;
     end

@@ -51,24 +51,23 @@ module controller_cdl #(
         Weights_loaded=11,
         Read_i1 =12,
         Operate_D1 =13,
-        Read_i2 =14,
-        Operate_D2 =15,
-        Read_i3 =16,
-        Operate_D3 =17,
-        Read_i4 =18,
-        Operate_D4 =19,
-        Read_i5 =20,
-        Operate_D5 =21,
-        Read_i6 =22,
-        Operate_D6 =23,
-        Read_i7 =24,
-        Operate_D7 =25,
-        Read_i8 =26,
-        Operate_D8 =27,
-        Send2Bias = 28,
-        Send2ACTV = 29,
-        Store_out =30,
-        DONE =31
+        Operate_D2 =14,
+        Operate_D3 =15,
+        Operate_D4 =16,
+        Operate_D5 =17,
+        Operate_D6 =18,
+        Operate_D7 =19,
+        Operate_D8 =20,
+        Wait_1 = 21,
+        Wait_2 = 22,
+        Wait_3 = 23,
+        Wait_4 = 24,
+        Wait_5 = 25,
+        Wait_6 = 26,
+        Send2Bias = 27,
+        Send2ACTV = 28,
+        Store_out =29,
+        DONE =30
     } state_t;
     state_t current_state,next_state;
 
@@ -165,70 +164,52 @@ module controller_cdl #(
                     next_state = Read_i1;
             end
             Operate_D1: begin
-                next_state = Read_i2;
+                next_state = Operate_D2;
             end
-            Read_i2: begin
-                if(sram_state==2)
-                    next_state = Operate_D2;
-                else
-                    next_state = Read_i2;
-
-            end
+            
             Operate_D2: begin  
-                next_state = Read_i3;             
+                next_state = Operate_D3;             
             end
-            Read_i3: begin
-                if(sram_state==2)
-                    next_state = Operate_D3;
-                else
-                    next_state = Read_i3;
-            end
+            
             Operate_D3: begin
-                next_state = Read_i4;
+                next_state = Operate_D4;
             end
-            Read_i4: begin
-                if(sram_state==2)
-                    next_state = Operate_D4;
-                else
-                    next_state = Read_i4;
-            end
+            
             Operate_D4: begin
-                next_state = Read_i5;
+                next_state = Operate_D5;
             end
-            Read_i5: begin
-                if(sram_state==2)
-                    next_state = Operate_D5;
-                else
-                    next_state = Read_i5;
-            end
+            
             Operate_D5: begin
-                next_state = Read_i6;
+                next_state = Operate_D6;
             end
-            Read_i6: begin
-                if(sram_state==2)
-                    next_state = Operate_D6;
-                else
-                    next_state = Read_i6;
-            end
+            
             Operate_D6: begin
-                next_state = Read_i7;
+                next_state = Operate_D7;
             end
-            Read_i7: begin
-                if(sram_state==2)
-                    next_state = Operate_D7;
-                else
-                    next_state = Read_i7;
-            end
+           
             Operate_D7: begin
-                next_state = Read_i8;
+                next_state = Operate_D8;
             end
-            Read_i8: begin
-                if(sram_state==2)
-                    next_state = Operate_D8;
-                else
-                    next_state = Read_i8;
-            end
+            
             Operate_D8: begin
+                next_state = Wait_1;
+            end
+            Wait_1: begin
+                next_state = Wait_2;
+            end
+            Wait_2: begin
+                next_state = Wait_3;
+            end
+            Wait_3: begin
+                next_state = Wait_4;
+            end
+            Wait_4: begin
+                next_state = Wait_5;
+            end
+            Wait_5: begin
+                next_state = Wait_6;
+            end
+            Wait_6: begin
                 next_state = Send2Bias;
             end
             Send2Bias: begin
@@ -349,9 +330,7 @@ module controller_cdl #(
                 in_num = in_count_r;
                 weights_loaded = 1;
             end
-            Read_i1, Read_i2, Read_i3, Read_i4,
-            Read_i5, Read_i6, Read_i7, Read_i8: begin
-                in_bus = sram_data;
+            Read_i1: begin
                 read_in_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
@@ -359,25 +338,80 @@ module controller_cdl #(
                 weight_num = weight_count_r;
                 
             end
-            Operate_D1, Operate_D2, Operate_D3, Operate_D4,
-            Operate_D5, Operate_D6, Operate_D7, Operate_D8: begin
-                in_bus = sram_data;
+            Operate_D1: begin
+                in_bus = sram_data[7:0];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 in_num = in_count_r;
             end
+            Operate_D2: begin
+                in_bus = sram_data[15:8];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Operate_D3: begin
+                in_bus = sram_data[23:16];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Operate_D4: begin
+                in_bus = sram_data[31:24];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;        
+            end 
+            Operate_D5: begin
+                in_bus = sram_data[39:32];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Operate_D6: begin
+                in_bus = sram_data[47:40];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Operate_D7: begin
+                in_bus = sram_data[55:48];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Operate_D8: begin
+                in_bus = sram_data[63:56];
+                operate_f = 1;
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
+            Wait_1, Wait_2, Wait_3, Wait_4, Wait_5, Wait_6: begin
+                design_busy = 1;
+                weight_num = weight_count_r;
+                in_num = in_count_r;
+            end
             Send2Bias: begin
+                design_busy = 1;
                 out2bias =1;
                 weight_num = weight_count_r;
                 in_num = in_count_r;
                 
             end
             Send2ACTV: begin
+                design_busy = 1;
                 weight_num = weight_count_r;
                 in_num = in_count_r;
             end
             Store_out: begin
+                design_busy = 1;
                 store_output=1;
                 weight_num = weight_count_r;
                 in_num = in_count_r;
