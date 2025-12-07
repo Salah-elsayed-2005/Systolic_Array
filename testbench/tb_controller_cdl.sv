@@ -24,7 +24,7 @@ module tb_controller_cdl ();
     logic data_ready;
     logic buffer_busy,design_busy;
     logic [63:0] systolic_out;
-    logic weights_loaded;
+    logic weights_ready;
     // output to sys
     logic [63:0] in_bus;
     //logic [63:0] weight;

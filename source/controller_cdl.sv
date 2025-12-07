@@ -20,7 +20,7 @@ module controller_cdl #(
     output logic data_ready,
     output logic buffer_busy,design_busy,
     output logic [63:0] systolic_out,
-    output logic weights_loaded,
+    output logic weights_ready,
     // output to sys
     output logic [63:0] in_bus,
     //output logic [63:0] weight,
@@ -272,7 +272,7 @@ module controller_cdl #(
         buffer_busy = 0;
         design_busy = 0;
         systolic_out = 64'b0;
-        weights_loaded = 0;
+        weights_ready = 0;
         in_bus = 64'b0;
         data = 64'b0;
         shift_enable = 0;
@@ -332,7 +332,7 @@ module controller_cdl #(
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
-                weights_loaded = 1;
+                weights_ready = 1;
             end
             Read_i1: begin
                 read_in_enable = 1;
