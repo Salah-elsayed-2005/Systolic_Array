@@ -5,7 +5,7 @@ module systolic_pe #(
 ) (
     input  logic       clk,
     input  logic       n_rst,          
-    input  logic [7:0] in,             
+    input  logic [7:0] in,acc_above,             
     input  logic       shift_enable,   
     input  logic       operate_f,      
     output logic [7:0] shifted,        
@@ -57,7 +57,7 @@ module systolic_pe #(
         // default: hold previous value
         shift_next = shift_reg;
 
-        if (load_w && !operate_f) begin
+        if (load_w) begin
             // during weight-load: pass weights horizontally
             shift_next = w_next;
         end
@@ -84,8 +84,8 @@ module systolic_pe #(
         logic signed [8:0] temp_sum;  // 9-bit to handle overflow
         acc_next = acc_reg;          // hold by default
         
-        if (operate_f) begin  // accumulate only in inference mode
-            temp_sum = $signed(acc_reg) + $signed(product);
+        if (operate_f) begin  // accumulate during inference mode
+            temp_sum = $signed(acc_above) + $signed(product);
             // saturation logic
             if (temp_sum > 9'sd127)
                 acc_next = 8'd127;
@@ -93,6 +93,10 @@ module systolic_pe #(
                 acc_next = 8'd128;  // -128 in 8-bit signed
             else
                 acc_next = temp_sum[7:0];
+        end
+        else begin
+            // clear accumulator during weight-load phase
+            acc_next = 8'b0;
         end
     end
 
