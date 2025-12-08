@@ -173,21 +173,34 @@ module tb_ahb_accelerator ();
         hwrite = 0;
         @(negedge clk);
         
-        // start inference
+        // load_weights
         hsel = 1;
-        haddr = 22;    
+        haddr = 10'h22;    
         htrans = 2'b10; // NONSEQ
-        hsize = 2'b11; // 64-bit
+        hsize = 2'b00; 
         hwrite = 1;
         hburst = 3'b000; // SINGLE
-        hwdata = 2;
+        hwdata = 64'h0000000000020000;
+        repeat (60) @(negedge clk);
+        hsel = 0;
+        hwrite = 0;
+        @(negedge clk);
+
+        // start inference
+        hsel = 1;
+        haddr = 10'h22;    
+        htrans = 2'b10; // NONSEQ
+        hsize = 2'b00; 
+        hwrite = 1;
+        hburst = 3'b000; // SINGLE
+        hwdata = 64'h0000000000010000;
         repeat (60) @(negedge clk);
         hsel = 0;
         hwrite = 0;
         @(negedge clk);
 
         hsel = 1;
-        haddr = 24;    
+        haddr = 10'h24;    
         htrans = 2'b10; // NONSEQ
         hsize = 2'b11; // 64-bit
         hwrite = 1;
@@ -200,7 +213,7 @@ module tb_ahb_accelerator ();
 
 
         hsel = 1;
-        haddr = 22;    
+        haddr = 10'h22;    
         htrans = 2'b10; // NONSEQ
         hsize = 2'b11; // 64-bit
         hwrite = 1;
@@ -213,7 +226,7 @@ module tb_ahb_accelerator ();
 
 
         hsel = 1;
-        haddr = 18;    
+        haddr = 10'h18;    
         htrans = 2'b10; // NONSEQ
         hsize = 2'b11; // 64-bit
         hwrite = 0;

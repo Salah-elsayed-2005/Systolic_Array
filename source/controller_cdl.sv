@@ -20,7 +20,7 @@ module controller_cdl #(
     output logic data_ready,
     output logic buffer_busy,design_busy,
     output logic [63:0] systolic_out,
-    output logic weights_ready,
+    output logic weight_ready,
     // output to sys
     output logic [63:0] in_bus,
     //output logic [63:0] weight,
@@ -34,7 +34,7 @@ module controller_cdl #(
     output logic store_output
 
 );
-   
+   logic [63:0] in_bus_r;
    
     typedef enum logic [4:0] {
         IDLE      = 0,
@@ -77,6 +77,16 @@ module controller_cdl #(
         else 
             current_state <= next_state;
     end
+
+        always_ff @(posedge clk or negedge n_rst) begin
+            if (!n_rst)
+                in_bus_r <= 64'd0;
+            else if (current_state == Read_i1)
+                in_bus_r <= sram_data;   // capture the SRAM data only in this state
+            else
+                in_bus_r <= in_bus_r;    // hold previous value (no latch because it's FF)
+        end
+
 
     always_comb begin 
         next_state = current_state;
@@ -231,40 +241,55 @@ module controller_cdl #(
     endcase
     end
 
-    logic [2:0] weight_count_r, weight_count_n;
-    //logic [2:0] in_count_r, in_count_n;
-    always_ff @(posedge clk, negedge n_rst) begin
-         if (!n_rst) begin
-            weight_count_r <= 0;
-            //in_count_r <= 0;
-        end else begin
-            weight_count_r <= weight_count_n;
-            //in_count_r <= in_count_n;
-        end
-    end
-
-    always_comb begin
-        weight_count_n = weight_count_r;
-        //in_count_n     = in_count_r;
-
-    // ----- weight counter -----
-        if (sram_state==2 && (write_w_enable||read_w_enable)) begin
-            if (weight_count_r == 7)
-                weight_count_n = 0;
-            else
-                weight_count_n = weight_count_r + 1;
-        end
-
-    // ----- input counter -----
-    //    if (sram_state==2 && (write_in_enable||read_in_enable)) begin
-    //        if (in_count_r == 7)
-    //            in_count_n = 0;
-    //        else
-    //            in_count_n = in_count_r + 1;
-    //    end
-    end
+    logic [2:0] weight_count_r;
+    //weight_count_n;
+    // //logic [2:0] in_count_r, in_count_n;
+    // always_ff @(posedge clk, negedge n_rst) begin
+    //      if (!n_rst) begin
+    //         weight_count_r <= 0;
+    //         //in_count_r <= 0;
+    //     end else begin
+    //         weight_count_r <= weight_count_n;
+    //         //in_count_r <= in_count_n;
+    //     end
+    // end
 
 
+    flex_counter_cdl #(
+        .SIZE(3)
+    ) weight_counter (
+        .clk(clk),
+        .n_rst(n_rst),
+        .rollover_val(3'd7),
+        .count_enable((sram_state==2) && (write_w_enable || read_w_enable)),
+        .clear(!n_rst),
+        .count_out(weight_count_r),
+        /* verilator lint_off PINCONNECTEMPTY */
+         .rollover_flag() 
+        /* verilator lint_on PINCONNECTEMPTY */
+    );
+    // always_comb begin
+    //     weight_count_n = weight_count_r;
+    //     //in_count_n     = in_count_r;
+
+    // // ----- weight counter -----
+    //     if (sram_state==2 && (write_w_enable||read_w_enable)) begin
+    //         if (weight_count_r == 7)
+    //             weight_count_n = 0;
+    //         else
+    //             weight_count_n = weight_count_r + 1;
+    //     end
+
+    // // ----- input counter -----
+    // //    if (sram_state==2 && (write_in_enable||read_in_enable)) begin
+    // //        if (in_count_r == 7)
+    // //            in_count_n = 0;
+    // //        else
+    // //            in_count_n = in_count_r + 1;
+    // //    end
+    // end
+
+    
 
     always_comb begin
         // default outputs
@@ -272,7 +297,7 @@ module controller_cdl #(
         buffer_busy = 0;
         design_busy = 0;
         systolic_out = 64'b0;
-        weights_ready = 0;
+        weight_ready = 0;
         in_bus = 64'b0;
         data = 64'b0;
         shift_enable = 0;
@@ -286,6 +311,8 @@ module controller_cdl #(
         write_in_enable = 0;
         write_w_enable = 0;
         out2bias = 0;
+
+    
 
         case(current_state)
             IDLE: begin
@@ -320,7 +347,7 @@ module controller_cdl #(
                 read_w_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
-                shift_enable = 1;
+                if(sram_state==2) shift_enable = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
@@ -332,19 +359,21 @@ module controller_cdl #(
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
-                weights_ready = 1;
+                weight_ready = 1;
             end
             Read_i1: begin
                 read_in_enable = 1;
                 buffer_busy = 1;
                 design_busy = 1;
+                in_bus = sram_data;
                 //in_num = in_count_r;
                 in_num = 0;
                 weight_num = weight_count_r;
                 
             end
             Operate_D1: begin
-                in_bus[7:0] = sram_data[7:0];
+                in_bus=64'h0;
+                in_bus[7:0] = in_bus_r[7:0];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -352,7 +381,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D2: begin
-                in_bus[15:8] = sram_data[15:8];
+                in_bus=64'h0;
+                in_bus[15:8] = in_bus_r[15:8];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -360,7 +390,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D3: begin
-                in_bus[23:16] = sram_data[23:16];
+                in_bus=64'h0;
+                in_bus[23:16] = in_bus_r[23:16];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -368,7 +399,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D4: begin
-                in_bus[31:24] = sram_data[31:24];
+                in_bus=64'h0;
+                in_bus[31:24] = in_bus_r[31:24];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;  
@@ -376,7 +408,8 @@ module controller_cdl #(
                 in_num = 0;      
             end 
             Operate_D5: begin
-                in_bus[39:32] = sram_data[39:32];
+                in_bus=64'h0;
+                in_bus[39:32] = in_bus_r[39:32];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -384,7 +417,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D6: begin
-                in_bus[47:40] = sram_data[47:40];
+                in_bus=64'h0;
+                in_bus[47:40] = in_bus_r[47:40];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -392,7 +426,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D7: begin
-                in_bus[55:48] = sram_data[55:48];
+                in_bus=64'h0;
+                in_bus[55:48] = in_bus_r[55:48];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -400,7 +435,8 @@ module controller_cdl #(
                 in_num = 0;
             end
             Operate_D8: begin
-                in_bus[63:56] = sram_data[63:56];
+                in_bus=64'h0;
+                in_bus[63:56] = in_bus_r[63:56];
                 operate_f = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
@@ -409,6 +445,7 @@ module controller_cdl #(
             end
             Wait_1, Wait_2, Wait_3, Wait_4, Wait_5, Wait_6: begin
                 design_busy = 1;
+                operate_f=1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
@@ -422,12 +459,14 @@ module controller_cdl #(
             end
             Send2ACTV: begin
                 design_busy = 1;
+                out2bias =1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
             end
             Store_out: begin
                 design_busy = 1;
+                out2bias =1;
                 store_output=1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;

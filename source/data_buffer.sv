@@ -11,7 +11,6 @@ module data_buffer #(
     input logic read_in_enable,
     input logic write_w_enable,
     input logic write_in_enable,
-    input logic [1:0] hsize,
     input logic [2:0] weight_num,
     input logic [2:0] in_num,
     input logic [63:0] data,
@@ -25,8 +24,7 @@ module data_buffer #(
     output logic [1:0] sram_state
 );
     // internal signals
-        logic [7:0] buffer [0:7][0:7];
-        logic [3:0] num_bytes;
+        //logic [3:0] num_bytes;
         logic [9:0] address_w1,address_w2,address_in1,address_in2,address_out1,address_out2;
         logic write_w1_enable,write_w2_enable,write_in1_enable,write_in2_enable, write_out1_enable,write_out2_enable;
         logic read_w1_enable,read_w2_enable,read_in1_enable,read_in2_enable,read_out1_enable,read_out2_enable;
@@ -172,50 +170,32 @@ module data_buffer #(
             
 
             sram_state = 2'b00;
-            num_bytes = 4'h0;
-            buffer[0][0] = 8'h00;
+            //num_bytes = 4'h0;
             sram_data = 64'h0000000000000000;
 
         
 
         if(write_w_enable) begin
-            num_bytes = 1<<hsize;
-            for(int j=0; j<8; j=j+1) begin
-                buffer[weight_num][j] = 8'h00;
-            end
-            for(int i=0; i<num_bytes; i=i+1) begin
-                buffer[weight_num][i] = data[i*8 +: 8];
-            end
-            write_w1_data = {buffer[weight_num][3],buffer[weight_num][2]
-            ,buffer[weight_num][1],buffer[weight_num][0]};
+            //num_bytes = 1<<hsize;
+            
+            write_w1_data = data[31:0];
             address_w1[2:0] = weight_num;
             write_w1_enable = 1;
 
-            write_w2_data = {buffer[weight_num][7],buffer[weight_num][6]
-            ,buffer[weight_num][5],buffer[weight_num][4]};
+            write_w2_data = data[63:32];
             address_w2[2:0] = weight_num;
             write_w2_enable = 1;
             sram_state = sram_w1_state;
 
         end
         if(write_in_enable) begin
-            num_bytes = 1<<hsize;
+            //num_bytes = 1<<hsize;
 
-            for(int j=0; j<8; j=j+1) begin
-                buffer[in_num][j] = 8'h00;
-            end
-
-            for(int i=0; i<num_bytes; i=i+1) begin
-                buffer[in_num][i] = data[i*8 +: 8];
-            end
-
-            write_in1_data = {buffer[in_num][3],buffer[in_num][2]
-            ,buffer[in_num][1],buffer[in_num][0]};
+            write_in1_data = data[31:0];
             address_in1[2:0] = in_num;
             write_in1_enable = 1;
 
-            write_in2_data = {buffer[in_num][7],buffer[in_num][6]
-            ,buffer[in_num][5],buffer[in_num][4]};
+            write_in2_data = data[63:32];
             address_in2[2:0] = in_num;
             write_in2_enable = 1;
             sram_state = sram_in1_state;

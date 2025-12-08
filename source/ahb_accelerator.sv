@@ -26,7 +26,7 @@ module ahb_accelerator #(
     logic buffer_busy;
     logic design_busy;
     logic [63:0] systolic_out;
-    logic weights_loaded;
+    logic weight_ready;
     logic [63:0] weights;
     logic [63:0] inputs;
     logic start_inference;
@@ -87,7 +87,7 @@ module ahb_accelerator #(
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
-        //.weights_loaded(weights_loaded),
+        .weight_ready(weight_ready),
         .weights(weights),
         .inputs(inputs),
         .start_inference(start_inference),
@@ -115,7 +115,7 @@ module ahb_accelerator #(
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
-        .weights_loaded(weights_loaded),
+        .weight_ready(weight_ready),
         .in_bus(in_bus),
         //.weight(weight),
         .shift_enable(shift_enable),
@@ -126,7 +126,9 @@ module ahb_accelerator #(
         .read_in_enable(read_in_enable),
         .weight_num(weight_num),
         .in_num(in_num),
-        .hsize(hsize),
+        /* verilator lint_off PINCONNECTEMPTY */
+        .hsize(),
+        /* verilator lint_on PINCONNECTEMPTY */
         .write_in_enable(write_in_enable),
         .write_w_enable(write_w_enable),
         .store_output(store_output)
@@ -140,7 +142,6 @@ module ahb_accelerator #(
         .read_in_enable(read_in_enable),
         .write_w_enable(write_w_enable),
         .write_in_enable(write_in_enable),
-        .hsize(hsize),
         .weight_num(weight_num),
         .in_num(in_num),
         .data(data),

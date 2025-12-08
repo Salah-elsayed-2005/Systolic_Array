@@ -16,7 +16,6 @@ module tb_data_buffer ();
     logic read_in_enable;
     logic write_w_enable;
     logic write_in_enable;
-    logic [1:0] hsize;
     logic [2:0] weight_num;
     logic [2:0] in_num;
     logic [63:0] data;
@@ -56,7 +55,6 @@ module tb_data_buffer ();
 
         reset_dut;
 
-        hsize = 3;
         write_w_enable = 0;
         write_in_enable = 0;
         read_w_enable = 0;

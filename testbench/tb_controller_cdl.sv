@@ -75,6 +75,7 @@ module tb_controller_cdl ();
         @(negedge clk);
         end
 
+        @(negedge clk);
         //store second 4 weights in sram
         weights = 64'hB0B1B2B3B4B5B6B7;
         info =("Storing weights");
