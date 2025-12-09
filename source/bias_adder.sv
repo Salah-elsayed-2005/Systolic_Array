@@ -13,7 +13,7 @@ module bias_adder #(
     logic signed [7:0] bias_lane [0:7];
     logic signed [8:0] sum_lane  [0:7];
     logic signed [7:0] sat_lane  [0:7];
-
+ 
     genvar i;
 
     generate

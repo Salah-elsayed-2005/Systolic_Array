@@ -16,6 +16,8 @@ always_comb begin
     // Sign-extend both inputs to 16 bits
     A_extended = $signed({A[7], A[7], A[7], A[7], A[7], A[7], A[7], A[7], A});
     B_extended = $signed({B[7], B[7], B[7], B[7], B[7], B[7], B[7], B[7], B});
+    // A_extended = {8{A[7]}, A};
+    // B_extended = {8{B[7]}, B};
     
     // Generate partial products - multiply B by each bit of A, then shift
     // For bits 0-6: normal multiplication
@@ -38,7 +40,7 @@ always_comb begin
         sum = sum + $signed({partial_products[i][15], partial_products[i]});
     end
     
-    // Saturate to 8-bit signed range [-128, 127]
+    // Saturate 
     if (sum > 17'sd127)
         product = 8'h7F;
     else if (sum < -17'sd128)

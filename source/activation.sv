@@ -33,7 +33,7 @@ module activation #(
         end
     end
 
-    // Concatenate lanes back into 64-bit output
+    // Concatenate
     always_comb begin
         for (int i = 0; i < 8; i++) begin
             out_next[i*8 +: 8] = lane_next[i];
