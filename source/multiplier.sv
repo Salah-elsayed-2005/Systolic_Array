@@ -8,32 +8,43 @@ module multiplier (
     output logic [7:0]  product
 );
 
-logic signed [15:0] PaddedA;
-logic signed [15:0] PaddedB;
-logic signed [31:0] PartialS [15:0];
-logic signed [33:0] sumPartial;
-
-assign PaddedA = {{8{A[7]}}, A};
-assign PaddedB = {{8{B[7]}}, B};
-
-genvar i;
-generate
-    for (i = 0; i < 16; i = i + 1) begin
-        assign PartialS[i] = PaddedA[i] ? ({{16{PaddedB[15]}}, PaddedB} <<< i) : 32'sd0;
-    end
-endgenerate
-
 always_comb begin
-    sumPartial = 34'sd0;
-    for (int j = 0; j < 16; j = j + 1)
-        sumPartial = sumPartial + {{2{PartialS[j][31]}}, PartialS[j]};
-
-    if (sumPartial > 34'sd127)
-        sumPartial = 34'sd127;
-    else if (sumPartial < -34'sd128)
-        sumPartial = -34'sd128;
-
-    product = sumPartial[7:0];
+    logic signed [15:0] A_extended, B_extended;
+    logic signed [15:0] partial_products [7:0];
+    logic signed [16:0] sum;
+    
+    // Sign-extend both inputs to 16 bits
+    A_extended = $signed({A[7], A[7], A[7], A[7], A[7], A[7], A[7], A[7], A});
+    B_extended = $signed({B[7], B[7], B[7], B[7], B[7], B[7], B[7], B[7], B});
+    
+    // Generate partial products - multiply B by each bit of A, then shift
+    // For bits 0-6: normal multiplication
+    for (int i = 0; i < 7; i++) begin
+        if (A[i])
+            partial_products[i] = B_extended <<< i;
+        else
+            partial_products[i] = 16'sd0;
+    end
+    
+    // For bit 7 (sign bit): negate the partial product (subtract instead of add)
+    if (A[7])
+        partial_products[7] = -(B_extended <<< 7);
+    else
+        partial_products[7] = 16'sd0;
+    
+    // Sum all partial products
+    sum = 17'sd0;
+    for (int i = 0; i < 8; i++) begin
+        sum = sum + $signed({partial_products[i][15], partial_products[i]});
+    end
+    
+    // Saturate to 8-bit signed range [-128, 127]
+    if (sum > 17'sd127)
+        product = 8'h7F;
+    else if (sum < -17'sd128)
+        product = 8'h80;
+    else
+        product = sum[7:0];
 end
 
 endmodule

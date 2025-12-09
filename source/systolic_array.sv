@@ -96,7 +96,7 @@ module systolic_array #(
             operate_cycle_count <= 4'd0;
         else if (!operate_f)
             operate_cycle_count <= 4'd0;
-        else if (shift_enable && operate_f) begin
+        else if (operate_f) begin  // Count during inference regardless of shift_enable
             if (operate_cycle_count < 4'd15)
                 operate_cycle_count <= operate_cycle_count + 4'd1;
         end
@@ -107,7 +107,7 @@ module systolic_array #(
             col_sums <= '0;
         end else if (!operate_f) begin
             col_sums <= '0;  // Clear during weight load
-        end else if (shift_enable && operate_f) begin
+        end else if (operate_f) begin  // Capture during inference regardless of shift_enable
             // Capture each column when complete and never overwrite it
             // Column c completes at cycle (8 + c)
             case (operate_cycle_count)
@@ -122,7 +122,6 @@ module systolic_array #(
                 default: col_sums <= col_sums; // Hold all values
             endcase
         end
-        // else: hold when shift_enable=0 or operate_f=0 (already handled above)
     end
     
     // ---------------- send2bias gating ----------------

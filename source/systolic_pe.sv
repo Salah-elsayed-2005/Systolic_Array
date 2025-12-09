@@ -85,12 +85,14 @@ module systolic_pe #(
         acc_next = acc_reg;          // hold by default
         
         if (operate_f) begin  // accumulate during inference mode
-            temp_sum = $signed(acc_above) + $signed(product);
+            // Sign-extend to 9 bits: cast to signed 8-bit first, then extend to 9-bit
+            temp_sum = $signed({acc_above[7], acc_above}) + $signed({product[7], product});
+            
             // saturation logic
             if (temp_sum > 9'sd127)
-                acc_next = 8'd127;
+                acc_next = 8'h7F;  // Max positive: 127
             else if (temp_sum < -9'sd128)
-                acc_next = 8'd128;  // -128 in 8-bit signed
+                acc_next = 8'h80;  // Max negative: -128
             else
                 acc_next = temp_sum[7:0];
         end
