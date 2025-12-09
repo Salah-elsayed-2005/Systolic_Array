@@ -245,12 +245,21 @@ module tb_ahb_subordinate_cdl ();
         buffer_busy = 1;
         enqueue_write(8'h00, 2'd3, 64'hCCCC_CCCC_CCCC_CCCC);
         execute_transactions(1);
-        finish_transactions();
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
         buffer_busy = 0;
+
+
+        finish_transactions();
+        
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
 
         status = "READ: BIAS+ERROR";
         // read bias register
-        buffer_busy = 1;
         enqueue_read(8'h10, 2'd3, 64'hDDDD_DDDD_DDDD_DDDD);
         // read error register (lower byte)
         enqueue_read(8'h20, 2'd0, 64'h0001);
@@ -258,7 +267,11 @@ module tb_ahb_subordinate_cdl ();
         enqueue_read(8'h21, 2'd0, 64'h0100);
         execute_transactions(3);
         finish_transactions();
-        buffer_busy = 0;
+
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
+        @(negedge clk);
 
         status = "READ: WEIGHTS (ERR)";
         // read weight register (hresp error)
@@ -296,7 +309,6 @@ module tb_ahb_subordinate_cdl ();
         finish_transactions();
 
         data_ready = 1;
-        design_busy = 1;
         systolic_out = 64'hFFFF_FFFF_FFFF_FFFF;
 
         status = "READ: STATUS/ACTIV/OUTPUT";
@@ -311,6 +323,7 @@ module tb_ahb_subordinate_cdl ();
         finish_transactions();
 
         // write to weights register (design busy), expected to blocked
+        design_busy = 1;
         enqueue_write(8'h00, 2'd3, 64'hAAAA_AAAA_AAAA_AAAA);
         execute_transactions(1);
         finish_transactions();
