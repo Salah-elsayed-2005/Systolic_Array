@@ -51,23 +51,25 @@ module ahb_subordinate_cdl #(
     logic hwrite_reg;
     logic [2:0] hburst_reg;
 
-    always_ff @(posedge clk, negedge n_rst) begin : REGISTERING_CONTROL_SIGNALS
-        if(!n_rst) begin
-            hsel_reg <= '0;
-            haddr_reg <= '0;
+    always_ff @(posedge clk or negedge n_rst) begin : REGISTERING_CONTROL_SIGNALS
+        if (!n_rst) begin
+            hsel_reg   <= '0;
+            haddr_reg  <= '0;
             htrans_reg <= '0;
-            hsize_reg <= '0;
+            hsize_reg  <= '0;
             hwrite_reg <= '0;
             hburst_reg <= '0;
         end
-        else begin
-            hsel_reg <= hsel;
-            haddr_reg <= haddr;
+        else if (hready) begin
+            // Only capture address/control when the bus is ready
+            hsel_reg   <= hsel;
+            haddr_reg  <= haddr;
             htrans_reg <= htrans;
-            hsize_reg <= hsize;
+            hsize_reg  <= hsize;
             hwrite_reg <= hwrite;
             hburst_reg <= hburst;
         end
+        // else: retain previous values (stalling)
     end
 
     logic [63:0] weight_next, weight_reg;
@@ -106,6 +108,9 @@ module ahb_subordinate_cdl #(
         end
     end
 
+
+
+
     always_comb begin : REGISTER_BANK_ASSIGNMENTS
         output_next = systolic_out;
         weights = weight_reg;
@@ -116,18 +121,23 @@ module ahb_subordinate_cdl #(
         actv_mode = activation_reg[2:0];
     end
 
-    logic hresp_next, hresp_next1;
+
+
+
+
+    logic hready_next;
+    logic hresp_next, hresp_next1, hresp_next2;
     always_comb begin : HRESP_LOGIC
         hresp_next = 0;
-        if (hsel_reg && (htrans_reg == NONSEQ || htrans_reg == SEQ)) begin
-            if(~hwrite_reg) begin // read errors
-                case (haddr_reg)
+        if (hsel && (htrans == NONSEQ || htrans == SEQ)) begin
+            if(~hwrite) begin // read errors
+                case (haddr)
                     8'h00, 8'h01, 8'h02, 8'h03, 8'h04, 8'h05, 8'h06, 8'h07,
                     8'h08, 8'h09, 8'h0A, 8'h0B, 8'h0C, 8'h0D, 8'h0E, 8'h0F: hresp_next = 1;
                 endcase
             end
             else begin  // write errors
-                case (haddr_reg)
+                case (haddr)
                     8'h18, 8'h19, 8'h1A, 8'h1B, 8'h1C, 8'h1D, 8'h1E, 8'h1F,
                     8'h20, 8'h21, 8'h23                                   : hresp_next = 1;
                 endcase
@@ -138,30 +148,49 @@ module ahb_subordinate_cdl #(
     always_ff @(posedge clk, negedge n_rst) begin : HRESP_REG
         if(!n_rst) begin
             hresp_next1 <= 0;
+            hresp_next2 <= 0;
         end
         else begin
             hresp_next1 <= hresp_next;
+            hresp_next2 <= hresp_next1;
         end
     end
 
-    assign hresp = hresp_next | hresp_next1;
+    assign hresp = hresp_next1 | hresp_next2;
 
     always_comb begin : HREADY_LOGIC
-        hready = 1;
-        if (hsel_reg && (htrans_reg == NONSEQ || htrans_reg == SEQ)) begin
+        hready_next = 1;
+        // if (hsel && (htrans == NONSEQ || htrans == SEQ)) begin
             if (hresp_next || !w_hready || !r_hready) begin
-                hready = 0;
+                hready_next = 0;
             end
+        // end
+    end
+
+
+    always_ff @(posedge clk, negedge n_rst) begin : HREADY_REG
+        if(!n_rst) begin
+            hready <= 1'b1;
+        end
+        else begin
+            hready <= hready_next;
         end
     end
+
     always_comb begin : ERROR_LOGIC
-        error_next = 16'h0000;
-        if (buffer_f_wr && !clear_err[0])
+        // Make error bits sticky until explicitly cleared
+        error_next = error_reg;
+        // Bit 0: buffer write while busy
+        if (clear_err[0])
+            error_next[0] = 1'b0;
+        else if (buffer_f_wr)
             error_next[0] = 1'b1;
-        
-        if ((design_busy || buffer_busy) && !clear_err[1])
+
+        // Bit 8: design or buffer busy condition
+        if (clear_err[1])
+            error_next[8] = 1'b0;
+        else if (design_busy || buffer_busy)
             error_next[8] = 1'b1;
-        
     end
 
     always_comb begin : STATUS_LOGIC
@@ -202,13 +231,13 @@ module ahb_subordinate_cdl #(
 
         store_weights = 1'b0;
         store_inputs = 1'b0;
-        w_hready = 1;
-        buffer_f_wr = 1'b0;
+        // w_hready = 1;
+        // buffer_f_wr = 1'b0;
 
         if(data_ready) control_next[0] = 1'b0; // clear start_inference when data is ready
         if(weight_ready) control_next[1] = 1'b0; // clear load_weights when weights are ready
 
-        if(hsel_reg && !design_busy) begin
+        if(hsel_reg && hready && !design_busy) begin
             if (htrans_reg == NONSEQ || htrans_reg == SEQ) begin // NON-SEQ
                 if (hwrite_reg) begin
                     base_addr_f(haddr_reg, base_addr);
@@ -223,7 +252,7 @@ module ahb_subordinate_cdl #(
                                 2'd2: weight_next[low +: 32]  = hwdata[low +: 32];
                                 2'd3: weight_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
-                            if(buffer_busy) begin w_hready = 0; buffer_f_wr = 1'b1; end
+                            // if(buffer_busy) begin  buffer_f_wr = 1'b1; end
                             store_weights = 1;
                         end
                                
@@ -235,7 +264,7 @@ module ahb_subordinate_cdl #(
                                 2'd3: input_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
                             store_inputs = 1;
-                            if(buffer_busy) begin w_hready = 0; buffer_f_wr = 1'b1; end
+                            // if(buffer_busy) begin buffer_f_wr = 1'b1; end
                         end   
                         8'h10: begin
                             case (hsize_reg)
@@ -258,6 +287,19 @@ module ahb_subordinate_cdl #(
         end
     end
 
+    logic [7:0] base_addr_w_rdy;
+    always_comb begin : WRITE_HREADY_LOGIC
+        w_hready = 1;
+        buffer_f_wr = 1'b0;
+        if (hready ? hwrite : hwrite_reg) begin
+            base_addr_f(hready ? haddr : haddr_reg, base_addr_w_rdy);
+            case (base_addr_w_rdy)
+                8'h00, 8'h08: if (buffer_busy) begin w_hready = 0; buffer_f_wr = 1'b1; end
+            endcase
+        end
+    end
+
+
     logic [63:0] hrdata_next;
     always_ff @(posedge clk, negedge n_rst) begin : HRDATA_REGISTERING
         if(!n_rst) begin
@@ -278,7 +320,10 @@ module ahb_subordinate_cdl #(
         r_hready = 1;
         write_end = haddr_reg + (8'b1 << hsize_reg) - 1;
         read_end  = haddr     + (8'b1 << hsize)     - 1;
-        is_raw = hwrite_reg && ~hwrite && !((read_end < haddr_reg) || (haddr > write_end)) && hready;
+        // RAW hazard only when both sides are valid address phases for this slave
+        is_raw = (hsel && (htrans == NONSEQ || htrans == SEQ) && !hwrite) &&
+             (hsel_reg && (htrans_reg == NONSEQ || htrans_reg == SEQ) && hwrite_reg) &&
+             !((read_end < haddr_reg) || (haddr > write_end));
 
         clear_err = 2'b00;
 
