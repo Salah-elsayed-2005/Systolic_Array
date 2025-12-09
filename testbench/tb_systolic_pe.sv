@@ -12,6 +12,7 @@ module tb_systolic_pe ();
 
     logic clk, n_rst;
     logic [7:0] in;
+    logic [7:0] acc_above;
     logic shift_enable;
     logic operate_f;
     logic [7:0] shifted;
@@ -33,6 +34,7 @@ module tb_systolic_pe ();
         .clk(clk),
         .n_rst(n_rst),
         .in(in),
+        .acc_above(acc_above),
         .shift_enable(shift_enable),
         .operate_f(operate_f),
         .shifted(shifted),
@@ -80,6 +82,7 @@ module tb_systolic_pe ();
         
         // Initialize signals
         in = 8'h00;
+        acc_above = 8'h00;
         shift_enable = 0;
         operate_f = 0;
 
@@ -132,24 +135,26 @@ module tb_systolic_pe ();
         check_output(status, 8'h0A, 8'h00, 1'b1, 1'b1);
 
         // ========================================
-        // TEST 5: Inference - Single MAC Operation
+        // TEST 5: Inference - Single MAC Operation (acc_above = 0)
         // ========================================
         test_num = test_num + 1;
-        status = $sformatf("TEST %0d: MAC (10 * 3 = 30)", test_num);
+        status = $sformatf("TEST %0d: MAC (0 + 10 * 3 = 30)", test_num);
+        acc_above = 8'h00;  // Top row PE gets 0 from above
         in = 8'h03;  // input = 3, weight = 0x0A (10)
         shift_enable = 1;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
-        // shifted should pass input, acc should have 10*3=30
+        // shifted should pass input, acc should have 0 + 10*3 = 30
         check_output(status, 8'h03, 8'd30, 1'b1, 1'b1);
 
         // ========================================
-        // TEST 6: Inference - Accumulation
+        // TEST 6: Inference - Vertical Accumulation
         // ========================================
         test_num = test_num + 1;
-        status = $sformatf("TEST %0d: MAC Accumulation (10 * 5 + 30 = 80)", test_num);
-        in = 8'h05;  // input = 5, accumulate 10*5=50, total = 80
+        status = $sformatf("TEST %0d: Vertical Acc (30 + 10 * 5 = 80)", test_num);
+        acc_above = 8'd30;  // Receiving accumulation from PE above
+        in = 8'h05;  // input = 5, accumulate 30 + 10*5 = 80
         shift_enable = 1;
         operate_f = 1;
         @(posedge clk);
@@ -164,12 +169,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load positive weight
         in = 8'd10;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with positive input
         in = 8'd12;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -183,12 +190,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load positive weight
         in = 8'd10;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with negative input
         in = -8'sd5;  // -5
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -202,12 +211,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load negative weight
         in = -8'sd10;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with positive input
         in = 8'd8;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -221,37 +232,42 @@ module tb_systolic_pe ();
         reset_dut();
         // Load negative weight
         in = -8'sd6;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with negative input
         in = -8'sd7;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
         check_output(status, -8'sd7, 8'd42, 1'b1, 1'b1);
 
         // ========================================
-        // TEST 11: Accumulation with Mixed Signs
+        // TEST 11: Vertical Accumulation with Mixed Signs
         // ========================================
         test_num = test_num + 1;
-        status = $sformatf("TEST %0d: Mixed Sign Accumulation", test_num);
+        status = $sformatf("TEST %0d: Vertical Acc Mixed Signs", test_num);
         reset_dut();
         // Load weight 5
         in = 8'd5;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // First: 5 * 10 = 50
+        // First cycle: acc_above=0, product=5*10=50, output=50
         in = 8'd10;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
-        check_output("Mixed Acc Step 1", 8'd10, 8'd50, 1'b1, 1'b1);
-        // Second: 5 * (-8) = -40, acc = 50 - 40 = 10
+        check_output("Vertical Acc Step 1", 8'd10, 8'd50, 1'b1, 1'b1);
+        // Second cycle: acc_above=50 (from above PE), product=5*(-8)=-40, output=50-40=10
         in = -8'sd8;
+        acc_above = 8'd50;
         @(posedge clk);
         @(negedge clk);
         check_output(status, -8'sd8, 8'd10, 1'b1, 1'b1);
@@ -264,12 +280,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight 127 (max positive)
         in = 8'd127;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // Multiply: 127 * 2 = 254, but should saturate at 127
+        // Multiply: 0 + 127*2 = 254, but should saturate at 127
         in = 8'd2;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -283,12 +301,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight -128 (max negative)
         in = -8'sd128;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // Multiply: -128 * 2 = -256, but should saturate at -128
+        // Multiply: 0 + (-128)*2 = -256, but should saturate at -128
         in = 8'd2;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -302,17 +322,20 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight 10
         in = 8'd10;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // First: 10 * 12 = 120
+        // First: 0 + 10*12 = 120
         in = 8'd12;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
-        // Second: 10 * 12 = 120, acc = 120 + 120 = 240 -> saturate to 127
+        // Second: 120 (from above) + 10*12 = 240 -> saturate to 127
         in = 8'd12;
+        acc_above = 8'd120;
         @(posedge clk);
         @(negedge clk);
         check_output(status, 8'd12, 8'd127, 1'b1, 1'b1);
@@ -325,17 +348,20 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight -10
         in = -8'sd10;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // First: -10 * 12 = -120
+        // First: 0 + (-10)*12 = -120
         in = 8'd12;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
-        // Second: -10 * 12 = -120, acc = -120 + -120 = -240 -> saturate to -128
+        // Second: -120 (from above) + (-10)*12 = -240 -> saturate to -128
         in = 8'd12;
+        acc_above = -8'sd120;
         @(posedge clk);
         @(negedge clk);
         check_output(status, 8'd12, -8'sd128, 1'b1, 1'b1);
@@ -348,12 +374,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight 0
         in = 8'd0;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with non-zero input
         in = 8'd50;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -367,12 +395,14 @@ module tb_systolic_pe ();
         reset_dut();
         // Load non-zero weight
         in = 8'd25;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Multiply with zero input
         in = 8'd0;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -386,6 +416,7 @@ module tb_systolic_pe ();
         reset_dut();
         // Load first weight
         in = 8'd1;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
@@ -408,12 +439,14 @@ module tb_systolic_pe ();
         status = $sformatf("TEST %0d: Inference After Reset", test_num);
         // Load weight
         in = 8'd7;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Perform multiply
         in = 8'd9;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
@@ -423,23 +456,27 @@ module tb_systolic_pe ();
         check_output(status, 8'd0, 8'd0, 1'b1, 1'b1);
 
         // ========================================
-        // TEST 20: Long Accumulation Sequence
+        // TEST 20: Long Vertical Accumulation Sequence
         // ========================================
         test_num = test_num + 1;
-        status = $sformatf("TEST %0d: Long Accumulation", test_num);
+        status = $sformatf("TEST %0d: Long Vertical Accumulation", test_num);
         reset_dut();
         // Load weight 2
         in = 8'd2;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
-        // Accumulate: 2*1 + 2*2 + 2*3 + 2*4 = 2 + 4 + 6 + 8 = 20
+        // Simulate vertical accumulation: 0+2*1=2, 2+2*2=6, 6+2*3=12, 12+2*4=20
         operate_f = 1;
+        logic [7:0] running_acc = 0;
         for (int i = 1; i <= 4; i++) begin
             in = i;
+            acc_above = running_acc;
             @(posedge clk);
             @(negedge clk);
+            running_acc = out_acc;  // Capture for next iteration
         end
         check_output(status, 8'd4, 8'd20, 1'b1, 1'b1);
 
@@ -451,18 +488,21 @@ module tb_systolic_pe ();
         reset_dut();
         // Load weight
         in = 8'd5;
+        acc_above = 8'd0;
         shift_enable = 1;
         operate_f = 0;
         @(posedge clk);
         @(negedge clk);
         // Start inference
         in = 8'd3;
+        acc_above = 8'd0;
         operate_f = 1;
         @(posedge clk);
         @(negedge clk);
         // Disable shift (accumulation should stop)
         shift_enable = 0;
         in = 8'd10;
+        acc_above = 8'd15;
         @(posedge clk);
         @(negedge clk);
         // Accumulator should still have previous value (15)
