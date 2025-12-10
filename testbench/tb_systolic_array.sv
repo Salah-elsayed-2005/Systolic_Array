@@ -711,21 +711,21 @@ module tb_systolic_array ();
         // Load custom weights
         operate_f = 1'b0;
         shift_enable = 1'b1;
-        in_bus = 64'h0000_0000_0000_0000; // row 0
+        in_bus = 64'h0000_0000_0000_0000; 
         @(posedge clk);
-        in_bus = 64'h0000_0000_0000_0000;  // row 1
+        in_bus = 64'h0000_0000_0000_0000; 
         @(posedge clk);
-        in_bus = 64'h00FF_FFFF_FF01_0101;  // row 2
+        in_bus = 64'h00FF_FFFF_FF01_0101; 
         @(posedge clk);
-        in_bus = 64'h0807_0605_0403_0201;  // row 3
+        in_bus = 64'h0807_0605_0403_0201; 
         @(posedge clk);
-        in_bus = 64'hFF01_FF01_FF01_FF01;   // row 4
+        in_bus = 64'hFF01_FF01_FF01_FF01; 
         @(posedge clk);
-        in_bus = 64'h0000_0000_0000_00FF; // row 5
+        in_bus = 64'h0000_0000_0000_00FF; 
         @(posedge clk);
-        in_bus = 64'h7901_0101_0101_0101;  // row 6
+        in_bus = 64'h7901_0101_0101_0101; 
         @(posedge clk);
-        in_bus = 64'h0101_0101_0101_0101;  // row 7
+        in_bus = 64'h0101_0101_0101_0101; 
         @(posedge clk);
         shift_enable = 1'b0;
         @(posedge clk);
