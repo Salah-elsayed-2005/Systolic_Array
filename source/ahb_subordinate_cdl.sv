@@ -222,15 +222,27 @@ module ahb_subordinate_cdl #(
     logic [7:0] num_bytes;
     logic [7:0] base_addr;
 
-   always_comb begin : WRITE_LOGIC
+    logic store_weights_next, store_inputs_next;
+    always_ff @(posedge clk, negedge n_rst) begin : STORE_WEIGHTS_INPUTS_REG
+        if(!n_rst) begin
+            store_weights <= 1'b0;
+            store_inputs <= 1'b0;
+        end
+        else begin
+            store_weights <= store_weights_next;
+            store_inputs <= store_inputs_next;
+        end
+    end
+
+    always_comb begin : WRITE_LOGIC
         weight_next = weight_reg;
         input_next = input_reg;
         bias_next = bias_reg;
         control_next = control_reg;
         activation_next = activation_reg;
 
-        store_weights = 1'b0;
-        store_inputs = 1'b0;
+        store_weights_next = 1'b0;
+        store_inputs_next = 1'b0;
         // w_hready = 1;
         // buffer_f_wr = 1'b0;
 
@@ -253,7 +265,7 @@ module ahb_subordinate_cdl #(
                                 2'd3: weight_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
                             // if(buffer_busy) begin  buffer_f_wr = 1'b1; end
-                            store_weights = 1;
+                            store_weights_next = 1;
                         end
                                
                         8'h08: begin
@@ -263,7 +275,7 @@ module ahb_subordinate_cdl #(
                                 2'd2: input_next[low +: 32]  = hwdata[low +: 32];
                                 2'd3: input_next[0   +: 64]  = hwdata[0   +: 64];
                             endcase
-                            store_inputs = 1;
+                            store_inputs_next = 1;
                             // if(buffer_busy) begin buffer_f_wr = 1'b1; end
                         end   
                         8'h10: begin
