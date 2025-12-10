@@ -326,7 +326,6 @@ module ahb_subordinate_cdl #(
     logic [7:0] write_end, read_end;
     logic [7:0] base_addr_r, byte_offset_r, num_bytes_r, low_r;
 
-
     always_comb begin : READ_LOGIC
         hrdata_next = 64'h0;
         r_hready = 1;

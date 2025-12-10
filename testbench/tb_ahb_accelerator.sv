@@ -43,7 +43,7 @@ module tb_ahb_accelerator ();
     endtask
 
     logic hsel;
-    logic [7:0] haddr;
+    logic [9:0] haddr;
     logic [2:0] hsize;
     logic [2:0] hburst;
     logic [1:0] htrans;
@@ -60,7 +60,7 @@ module tb_ahb_accelerator ();
     ) BFM ( .clk(clk),
         // AHB-Subordinate Side
         .hsel(hsel),
-        .haddr(haddr),
+        .haddr(haddr[7:0]),
         .hsize(hsize),
         .htrans(htrans),
         .hburst(hburst),
@@ -158,6 +158,7 @@ module tb_ahb_accelerator ();
     ahb_accelerator #() DUT (.*);
 
     initial begin
+        haddr[9:8] = 2'b00;
 
         reset_model();
         reset_dut();
@@ -264,7 +265,7 @@ module tb_ahb_accelerator ();
         execute_transactions(1);
         finish_transactions();
         // poll status register until data ready is 1
-        //poll_until(8'h23, 2'd0, 64'h0000_0000_0000_0001);
+        poll_until(8'h23, 2'd0, 64'h0000_0000_0100_0000);
 
         // 7. Read Output
         enqueue_read(8'h18, 2'd3, 64'h0000_8024_00FE_7F08);

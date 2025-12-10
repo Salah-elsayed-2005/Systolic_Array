@@ -31,7 +31,6 @@ module ahb_accelerator #(
     logic [63:0] inputs;
     logic start_inference;
     logic load_weights;
-
     //contr & data_buffer
     logic read_w_enable;
     logic read_in_enable;
