@@ -700,6 +700,69 @@ module tb_systolic_array ();
         // Expected: FP8 mode: (-28*12)/4 + (-28*12)/4 = -84-84 = -168 (saturates to -128)
         // Then -128*4 = -512, truncates to 0x00 in 8 bits
         check_col_sums(status, 64'h0000000000000000);
+
+        // TEST 23: INT8 Mode - All Ones Input with Custom Weights
+        test_num = 23;
+        status = "TEST 23: INT8 Mode - All Ones Input";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b0;  // INT8 mode
+        
+        // Load custom weights
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        in_bus = 64'h0000_0000_0000_0000; // row 0
+        @(posedge clk);
+        in_bus = 64'h0000_0000_0000_0000;  // row 1
+        @(posedge clk);
+        in_bus = 64'h00FF_FFFF_FF01_0101;  // row 2
+        @(posedge clk);
+        in_bus = 64'h0807_0605_0403_0201;  // row 3
+        @(posedge clk);
+        in_bus = 64'hFF01_FF01_FF01_FF01;   // row 4
+        @(posedge clk);
+        in_bus = 64'h0000_0000_0000_00FF; // row 5
+        @(posedge clk);
+        in_bus = 64'h7901_0101_0101_0101;  // row 6
+        @(posedge clk);
+        in_bus = 64'h0101_0101_0101_0101;  // row 7
+        @(posedge clk);
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with all ones
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        in_bus = 64'h0000000000000001;  // Cycle 0: row0=1 (byte 0)
+        @(posedge clk);
+        in_bus = 64'h0000000000000100;  // Cycle 1: row1=1 (byte 1)
+        @(posedge clk);
+        in_bus = 64'h0000000000010000;  // Cycle 2: row2=1 (byte 2)
+        @(posedge clk);
+        in_bus = 64'h0000000001000000;  // Cycle 3: row3=1 (byte 3)
+        @(posedge clk);
+        in_bus = 64'h0000000100000000;  // Cycle 4: row4=1 (byte 4)
+        @(posedge clk);
+        in_bus = 64'h0000010000000000;  // Cycle 5: row5=1 (byte 5)
+        @(posedge clk);
+        in_bus = 64'h0001000000000000;  // Cycle 6: row6=1 (byte 6)
+        @(posedge clk);
+        in_bus = 64'h0100000000000000;  // Cycle 7: row7=1 (byte 7)
+        @(posedge clk);
+        in_bus = 64'h0;
+        repeat (7) @(posedge clk);  // Drain cycles
+        @(negedge clk);
+        // Expected: sum of each column of weights (all multiplied by 1)
+        // Col 0: 0x01+0x01+0xFF+0x01+0x01+0x01+0x00+0x00 = 0x104 (truncates to 0x04)
+        // Col 1: 0x01+0x01+0x00+0xFF+0x02+0x01+0x00+0x00 = 0x104 (truncates to 0x04)
+        // Col 2: 0x01+0x01+0x00+0x01+0x03+0xFF+0x00+0x00 = 0x105 (truncates to 0x05)
+        // Col 3: 0x01+0x01+0x00+0xFF+0x04+0xFF+0x00+0x00 = 0x204 (truncates to 0x04)
+        // Col 4: 0x01+0x01+0x00+0x01+0x05+0xFF+0x00+0x00 = 0x107 (truncates to 0x07)
+        // Col 5: 0x01+0x01+0x00+0xFF+0x06+0xFF+0x00+0x00 = 0x206 (truncates to 0x06)
+        // Col 6: 0x01+0x01+0x00+0x01+0x07+0xFF+0x00+0x00 = 0x109 (truncates to 0x09)
+        // Col 7: 0x01+0x79+0x00+0xFF+0x08+0x00+0x00+0x00 = 0x181 (truncates to 0x81)
+        check_col_sums(status, 64'h8109060704040404);
+        
         $display("\n===========================================");
         $display("All Systolic Array Tests Complete!");
         $display("===========================================\n");

@@ -171,6 +171,7 @@ module ahb_accelerator #(
         .n_rst(n_rst),
         .out_acc(out_acc),
         .bias(bias),
+        .out2bias(out2bias),
         .out_b(out_b),
         .float_in(0)
     );

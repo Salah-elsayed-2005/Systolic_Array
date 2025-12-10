@@ -41,35 +41,42 @@ module controller_cdl #(
         LOAD_weight =1,   
         LOAD_input =2,
         LOAD_C1 = 3,
-        LOAD_C2 =4,
-        LOAD_C3 = 5,
-        LOAD_C4 =6,
-        LOAD_C5 = 7,
-        LOAD_C6 =8,
-        LOAD_C7 =9,
-        LOAD_C8 =10,
-        Weights_loaded=11,
-        Read_i1 =12,
-        Operate_D1 =13,
-        Operate_D2 =14,
-        Operate_D3 =15,
-        Operate_D4 =16,
-        Operate_D5 =17,
-        Operate_D6 =18,
-        Operate_D7 =19,
-        Operate_D8 =20,
-        Wait_1 = 21,
-        Wait_2 = 22,
-        Wait_3 = 23,
-        Wait_4 = 24,
-        Wait_5 = 25,
-        Wait_6 = 26,
-        Wait_7 = 27,
-        Wait_8 = 28,
-        Send2Bias = 29,
-        Send2ACTV = 30,
-        Store_out =31,
-        DONE =32
+        Wait_c1 = 4,
+        LOAD_C2 =5,
+        Wait_c2 = 6,
+        LOAD_C3 = 7,
+        Wait_c3 = 8,
+        LOAD_C4 =9,
+        Wait_c4 = 10,
+        LOAD_C5 = 11,
+        Wait_c5 = 12,
+        LOAD_C6 =13,
+        Wait_c6 = 14,
+        LOAD_C7 =15,
+        Wait_c7 = 16,
+        LOAD_C8 =17,
+        Weights_loaded=18,
+        Read_i1 =19,
+        Operate_D1 =20,
+        Operate_D2 =21,
+        Operate_D3 =22,
+        Operate_D4 =23,
+        Operate_D5 =24,
+        Operate_D6 =25,
+        Operate_D7 =26,
+        Operate_D8 =27,
+        Wait_1 = 28,
+        Wait_2 = 29,
+        Wait_3 = 30,
+        Wait_4 = 31,
+        Wait_5 = 32,
+        Wait_6 = 33,
+        Wait_7 = 34,
+        Wait_8 = 35,
+        Send2Bias = 36,
+        Send2ACTV = 37,
+        Store_out =38,
+        DONE =39
     } state_t;
     state_t current_state,next_state;
 
@@ -120,45 +127,66 @@ module controller_cdl #(
             end
             LOAD_C1:begin
                 if(sram_state==2)
-                    next_state = LOAD_C2;
+                    next_state = Wait_c1;
                 else
                     next_state = LOAD_C1;
             end
+            Wait_c1:begin
+                    next_state = LOAD_C2;
+            end
             LOAD_C2:begin
                 if(sram_state==2)
-                    next_state = LOAD_C3;
+                    next_state = Wait_c2;
                 else
                     next_state = LOAD_C2;
             end
+            Wait_c2:begin
+                    next_state = LOAD_C3;
+            end
             LOAD_C3:begin
                 if(sram_state==2)
-                    next_state = LOAD_C4;
+                    next_state = Wait_c3;
                 else
                     next_state = LOAD_C3;
             end
+            Wait_c3:begin
+                    next_state = LOAD_C4;
+            end
             LOAD_C4:begin
                 if(sram_state==2)
-                    next_state = LOAD_C5;
+                    next_state = Wait_c4;
                 else
                     next_state = LOAD_C4;
             end
+            Wait_c4:begin
+                    next_state = LOAD_C5;
+            end
             LOAD_C5:begin
                 if(sram_state==2)
-                    next_state = LOAD_C6;
+                    next_state = Wait_c5;
                 else
                     next_state = LOAD_C5;
             end
+            Wait_c5:begin
+                    next_state = LOAD_C6;
+            end
             LOAD_C6:begin
                 if(sram_state==2)
-                    next_state = LOAD_C7;
+                    next_state = Wait_c6;
                 else
                     next_state = LOAD_C6;
             end
+            Wait_c6:begin
+                    next_state = LOAD_C7;
+            end
             LOAD_C7:begin
                 if(sram_state==2)
-                    next_state = LOAD_C8;
+                    next_state = Wait_c7;
                 else
                     next_state = LOAD_C7;
+            end
+            Wait_c7:begin
+                    next_state = LOAD_C8;
             end
             LOAD_C8:begin
                 if(sram_state==2)
@@ -314,7 +342,6 @@ module controller_cdl #(
         read_in_enable = 0;
         hsize = 2'b11;
         store_output = 0;
-        
         //hsize = 2'b00;
         write_in_enable = 0;
         write_w_enable = 0;
@@ -335,7 +362,7 @@ module controller_cdl #(
                 buffer_busy = 1;
                 design_busy = 1;
                 write_w_enable = 1;
-                weight_num = weight_count_r;
+                weight_num = 7-weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
             end
@@ -356,6 +383,13 @@ module controller_cdl #(
                 buffer_busy = 1;
                 design_busy = 1;
                 if(sram_state==2) shift_enable = 1;
+                weight_num = weight_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
+            end
+            Wait_c1, Wait_c2, Wait_c3, Wait_c4, Wait_c5, Wait_c6, Wait_c7: begin
+                in_bus = sram_data;
+                design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;

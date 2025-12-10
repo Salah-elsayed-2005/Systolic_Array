@@ -27,6 +27,7 @@ module tb_controller_cdl ();
     logic weights_ready;
     // output to sys
     logic [63:0] in_bus;
+    logic hold_bias;
     //logic [63:0] weight;
     logic shift_enable,operate_f,out2bias;
     // output to sram_buffer

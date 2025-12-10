@@ -177,7 +177,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-2. write weight column 2
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h7901_0101_0101_0101);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -185,7 +185,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-3. write weight column 3
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_00FF);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -193,7 +193,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-4. write weight column 4
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'hFF01_FF01_FF01_FF01);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -201,7 +201,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-5. write weight column 5
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0807_0605_0403_0201);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -209,7 +209,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-6. write weight column 6
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h80FF_FFFF_FF01_0101);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -217,7 +217,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-7. write weight column 7
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_0000);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0
@@ -225,7 +225,7 @@ module tb_ahb_accelerator ();
         // ----------------------------------------------
 
         // 1-8. write weight column 8
-        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_0000);
         execute_transactions(1);
         finish_transactions();
         // poll until device busy is 0

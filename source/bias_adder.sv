@@ -7,6 +7,7 @@ module bias_adder #(
     input  logic [63:0] out_acc,
     input  logic [63:0] bias,
     input  logic        float_in,  // FP8 mode enable
+    input  logic        out2bias, // Hold bias value
     output logic [63:0] out_b
 );
 
@@ -35,8 +36,10 @@ module bias_adder #(
             always_ff @(posedge clk or negedge n_rst) begin
                 if (!n_rst)
                     out_b[8*i +: 8] <= 8'b0;
-                else
+                else if (out2bias)
                     out_b[8*i +: 8] <= sat_lane[i];
+                else 
+                    out_b[8*i +: 8] <= out_b[8*i +: 8];
             end
         end
     endgenerate
