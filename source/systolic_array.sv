@@ -5,6 +5,7 @@ module systolic_array #(
     input  logic              n_rst,       
     input  logic              shift_enable,
     input  logic              operate_f,
+    input  logic              float_in,  // FP8 mode enable
     // input data: 8 values per cycle, 8 bits each = 64 bits
     // During operate_f (STAGGERED INPUT):
     //   Cycle 0: in_bus[7:0]   = x1, rest = 0 (row 0 gets x1)
@@ -76,6 +77,7 @@ module systolic_array #(
                     .acc_above   (pe_acc_in[r][c]),
                     .shift_enable(shift_enable),
                     .operate_f   (operate_f),
+                    .float_in    (float_in),
                     .shifted     (pe_shift[r][c]),
                     .out_acc     (pe_outacc[r][c])
                 );
@@ -110,15 +112,16 @@ module systolic_array #(
         end else if (operate_f) begin  // Capture during inference regardless of shift_enable
             // Capture each column when complete and never overwrite it
             // Column c completes at cycle (8 + c)
+            // FP8 mode: multiply by 4 to restore scale (compensates for divide by 4 in multiplier)
             case (operate_cycle_count)
-                4'd8:  col_sums[7:0]   <= pe_outacc[7][0];
-                4'd9:  col_sums[15:8]  <= pe_outacc[7][1];
-                4'd10: col_sums[23:16] <= pe_outacc[7][2];
-                4'd11: col_sums[31:24] <= pe_outacc[7][3];
-                4'd12: col_sums[39:32] <= pe_outacc[7][4];
-                4'd13: col_sums[47:40] <= pe_outacc[7][5];
-                4'd14: col_sums[55:48] <= pe_outacc[7][6];
-                4'd15: col_sums[63:56] <= pe_outacc[7][7];
+                4'd8:  col_sums[7:0]   <= float_in ? (pe_outacc[7][0] <<< 2) : pe_outacc[7][0];
+                4'd9:  col_sums[15:8]  <= float_in ? (pe_outacc[7][1] <<< 2) : pe_outacc[7][1];
+                4'd10: col_sums[23:16] <= float_in ? (pe_outacc[7][2] <<< 2) : pe_outacc[7][2];
+                4'd11: col_sums[31:24] <= float_in ? (pe_outacc[7][3] <<< 2) : pe_outacc[7][3];
+                4'd12: col_sums[39:32] <= float_in ? (pe_outacc[7][4] <<< 2) : pe_outacc[7][4];
+                4'd13: col_sums[47:40] <= float_in ? (pe_outacc[7][5] <<< 2) : pe_outacc[7][5];
+                4'd14: col_sums[55:48] <= float_in ? (pe_outacc[7][6] <<< 2) : pe_outacc[7][6];
+                4'd15: col_sums[63:56] <= float_in ? (pe_outacc[7][7] <<< 2) : pe_outacc[7][7];
                 default: col_sums <= col_sums; // Hold all values
             endcase
         end

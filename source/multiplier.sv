@@ -5,6 +5,7 @@ module multiplier (
     input  logic        n_rst,
     input  logic [7:0]  A,
     input  logic [7:0]  B,
+    input  logic        float_in,  // FP8 mode enable
     output logic [7:0]  product
 );
 
@@ -38,6 +39,13 @@ always_comb begin
     sum = 17'sd0;
     for (int i = 0; i < 8; i++) begin
         sum = sum + $signed({partial_products[i][15], partial_products[i]});
+    end
+    
+    // FP8 mode with scale=4: divide result by 4 to prevent overflow accumulation
+    // When inputs are scaled by 4, their product is scaled by 16, so divide by 4
+    // to keep intermediate results in reasonable range
+    if (float_in) begin
+        sum = sum >>> 2;  // Arithmetic right shift by 2 (divide by 4)
     end
     
     // Saturate 

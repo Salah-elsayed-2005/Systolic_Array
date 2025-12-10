@@ -6,6 +6,7 @@ module bias_adder #(
     input  logic        n_rst,
     input  logic [63:0] out_acc,
     input  logic [63:0] bias,
+    input  logic        float_in,  // FP8 mode enable
     output logic [63:0] out_b
 );
 

@@ -8,6 +8,7 @@ module systolic_pe #(
     input  logic [7:0] in,acc_above,             
     input  logic       shift_enable,   
     input  logic       operate_f,      
+    input  logic       float_in,       // FP8 mode enable
     output logic [7:0] shifted,        
     output logic [7:0] out_acc         
 );
@@ -76,6 +77,7 @@ module systolic_pe #(
         .n_rst(n_rst),
         .A(w_reg),
         .B(in),
+        .float_in(float_in),
         .product(product)
     );
 

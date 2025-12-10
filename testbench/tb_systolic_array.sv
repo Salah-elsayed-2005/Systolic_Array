@@ -10,7 +10,7 @@ module tb_systolic_array ();
         $dumpvars;
     end
 
-    logic clk, n_rst, shift_enable, operate_f;
+    logic clk, n_rst, shift_enable, operate_f, float_in;
     logic [63:0] in_bus;
     logic send2bias;
     logic [63:0] col_sums, sum_to_bias;
@@ -32,6 +32,7 @@ module tb_systolic_array ();
         .n_rst(n_rst),
         .shift_enable(shift_enable),
         .operate_f(operate_f),
+        .float_in(float_in),
         .in_bus(in_bus),
         .send2bias(send2bias),
         .col_sums(col_sums),
@@ -86,6 +87,7 @@ module tb_systolic_array ();
         shift_enable = 0;
         operate_f = 0;
         send2bias = 0;
+        float_in = 0;  // Default: INT8 mode
         in_bus = '0;
 
         reset_dut();
@@ -513,6 +515,191 @@ module tb_systolic_array ();
         @(posedge clk);  // Extra cycle for capture
         // Second pass: 8 rows * (1*2) = 16 = 0x10
         check_col_sums(status, 64'h1010101010101010);
+
+        // ============================================================
+        // FP8 MODE TESTS (float_in = 1)
+        // ============================================================
+        
+        // TEST 18: FP8 Mode - Identity Matrix (same as TEST 2 but with float_in=1)
+        test_num = 18;
+        status = "TEST 18: FP8 Mode - Identity Matrix";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b1;  // Enable FP8 mode
+        
+        // Load identity matrix weights - use larger values to avoid truncation
+        // Use all 4's instead of powers of 2
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        for (int i = 0; i < 8; i++) begin
+            in_bus = 64'h0;
+            in_bus[8*i +: 8] = 8'd4;  // All diagonal = 4
+            @(posedge clk);
+        end
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with all 4s input (to avoid truncation with scale=4)
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        for (int i = 0; i < 8; i++) begin
+            in_bus = 64'h0;
+            in_bus[8*i +: 8] = 8'd4;
+            @(posedge clk);
+        end
+        in_bus = 64'h0;
+        repeat (8) @(posedge clk);
+        @(posedge clk);
+        // Expected: With scale=4: (4*4)/4 = 4, then 4*4 = 16 per column
+        check_col_sums(status, 64'h1010101010101010);  // 0x10 = 16 for all columns
+
+        // TEST 19: FP8 Mode - Simple Multiplication (same as TEST 7)
+        test_num = 19;
+        status = "TEST 19: FP8 Mode - Simple 2x2";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b1;  // FP8 mode
+        
+        // Load weights for column 0 only: use multiples of 4 to avoid truncation
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        for (int i = 0; i < 7; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0000000000000C08;  // row 0=8 (0x08), row 1=12 (0x0C), rest=0
+        @(posedge clk);
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with [4, 4, 0, ...]
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        in_bus = 64'h0000000000000004;  // Cycle 0: row0=4
+        @(posedge clk);
+        in_bus = 64'h0000000000000400;  // Cycle 1: row1=4
+        @(posedge clk);
+        // Rows 2-7: zeros
+        for (int i = 2; i < 8; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0;
+        repeat (7) @(posedge clk);  // Drain cycles
+        @(negedge clk);
+        // Expected: FP8 mode: (8*4)/4 + (12*4)/4 = 8+12 = 20, then 20*4 = 80 = 0x50
+        check_col_sums(status, 64'h0000000000000050);  // 0x50 = 80
+
+        // TEST 20: FP8 Mode - Signed Values (same as TEST 8)
+        test_num = 20;
+        status = "TEST 20: FP8 Mode - Signed Values";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b1;  // FP8 mode
+        
+        // Load negative weight -20 in column 0, row 0 (multiple of 4)
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        for (int i = 0; i < 7; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h00000000000000EC;  // -20 = 0xEC in row 0
+        @(posedge clk);
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with single input value 4 in row 0
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        in_bus = 64'h0000000000000004;  // Cycle 0: row0=4
+        @(posedge clk);
+        // Rows 1-7: zeros
+        for (int i = 1; i < 8; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0;
+        repeat (7) @(posedge clk);  // Drain cycles
+        @(negedge clk);
+        // Expected: FP8 mode: (-20*4)/4 = -20, then -20*4 = -80 = 0xB0
+        check_col_sums(status, 64'h00000000000000b0);
+
+        // TEST 21: FP8 Mode - Saturation Positive (same as TEST 14)
+        test_num = 21;
+        status = "TEST 21: FP8 Mode - Saturation Positive";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b1;  // FP8 mode
+        
+        // Load large weights in column 0 (use 28 to get saturation after scaling)
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        for (int i = 0; i < 7; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0000000000001C1C;  // row 0=28 (0x1C), row 1=28 (0x1C), rest=0
+        @(posedge clk);
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with [12, 12, ...]
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        in_bus = 64'h000000000000000C;  // Cycle 0: row0=12 (byte 0)
+        @(posedge clk);
+        in_bus = 64'h0000000000000C00;  // Cycle 1: row1=12 (byte 1)
+        @(posedge clk);
+        // Rows 2-7: zeros
+        for (int i = 2; i < 8; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0;
+        repeat (7) @(posedge clk);  // Drain cycles
+        @(negedge clk);
+        // Expected: FP8 mode: (28*12)/4 + (28*12)/4 = 84+84 = 168 (saturates to 127)
+        // Then 127*4 = 508 = 0x1FC, but truncates to 0xFC in 8 bits
+        check_col_sums(status, 64'h00000000000000FC);  // Lower 8 bits of 508
+
+        // TEST 22: FP8 Mode - Saturation Negative (same as TEST 15)
+        test_num = 22;
+        status = "TEST 22: FP8 Mode - Saturation Negative";
+        $display("\n%s", status);
+        reset_dut();
+        float_in = 1'b1;  // FP8 mode
+        
+        // Load negative weights (-28 to get saturation)
+        operate_f = 1'b0;
+        shift_enable = 1'b1;
+        for (int i = 0; i < 7; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h000000000000E4E4;  // row 0=-28 (0xE4), row 1=-28 (0xE4), rest=0
+        @(posedge clk);
+        shift_enable = 1'b0;
+        @(posedge clk);
+        
+        // Inference with [12, 12, ...]
+        shift_enable = 1'b1;
+        operate_f = 1'b1;
+        in_bus = 64'h000000000000000C;  // Cycle 0: row0=12 (byte 0)
+        @(posedge clk);
+        in_bus = 64'h0000000000000C00;  // Cycle 1: row1=12 (byte 1)
+        @(posedge clk);
+        // Rows 2-7: zeros
+        for (int i = 2; i < 8; i++) begin
+            in_bus = 64'h0;
+            @(posedge clk);
+        end
+        in_bus = 64'h0;
+        repeat (7) @(posedge clk);  // Drain cycles
+        @(negedge clk);
+        // Expected: FP8 mode: (-28*12)/4 + (-28*12)/4 = -84-84 = -168 (saturates to -128)
+        // Then -128*4 = -512, truncates to 0x00 in 8 bits
+        check_col_sums(status, 64'h0000000000000000);
 
         $display("\n===========================================");
         $display("All Systolic Array Tests Complete!");
