@@ -700,7 +700,6 @@ module tb_systolic_array ();
         // Expected: FP8 mode: (-28*12)/4 + (-28*12)/4 = -84-84 = -168 (saturates to -128)
         // Then -128*4 = -512, truncates to 0x00 in 8 bits
         check_col_sums(status, 64'h0000000000000000);
-
         $display("\n===========================================");
         $display("All Systolic Array Tests Complete!");
         $display("===========================================\n");

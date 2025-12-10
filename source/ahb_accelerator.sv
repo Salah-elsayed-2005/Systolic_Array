@@ -160,6 +160,7 @@ module ahb_accelerator #(
         .shift_enable(shift_enable),
         .sum_to_bias(out_acc),
         .operate_f(operate_f),
+        .float_in(0),
         /* verilator lint_off PINCONNECTEMPTY */
         .col_sums()
         /* verilator lint_on PINCONNECTEMPTY */
@@ -170,7 +171,8 @@ module ahb_accelerator #(
         .n_rst(n_rst),
         .out_acc(out_acc),
         .bias(bias),
-        .out_b(out_b)
+        .out_b(out_b),
+        .float_in(0)
     );
 
     activation actv (
@@ -178,7 +180,8 @@ module ahb_accelerator #(
         .n_rst(n_rst),
         .activation_mode(activation_mode),
         .in(out_b),
-        .out(out_actv)
+        .out(out_actv),
+        .float_in(0)
     );
 
 

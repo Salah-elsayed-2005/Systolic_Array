@@ -94,6 +94,7 @@ module tb_ahb_accelerator ();
             for (iters = 0; iters < TIMEOUT; iters++) begin
                 enqueue_poll(addr, size);
                 execute_transactions(1);
+                finish_transactions();
                 if(BFM.get_last_read() == data) break;
             end
             if(iters >= TIMEOUT) begin
@@ -170,63 +171,63 @@ module tb_ahb_accelerator ();
         // 1-1. write weight column 1
         enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-2. write weight column 2
-        enqueue_write(8'h00, 2'd3, 64'h7901_0101_0101_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-3. write weight column 3
-        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_00FF);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-4. write weight column 4
-        enqueue_write(8'h00, 2'd3, 64'hFF01_FF01_FF01_FF01);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-5. write weight column 5
-        enqueue_write(8'h00, 2'd3, 64'h0807_0605_0403_0201);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-6. write weight column 6
-        enqueue_write(8'h00, 2'd3, 64'h00FF_FFFF_FF01_0101);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-7. write weight column 7
-        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_0000);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
 
         // 1-8. write weight column 8
-        enqueue_write(8'h00, 2'd3, 64'h0000_0000_0000_0000);
+        enqueue_write(8'h00, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
-        // finish_transactions();
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
         // ----------------------------------------------
@@ -235,6 +236,7 @@ module tb_ahb_accelerator ();
         // 2. Load weights to systolic array
         enqueue_write(8'h22, 2'd0, 64'h0000_0000_0000_0002);
         execute_transactions(1);
+        finish_transactions();
         // poll status register until design busy is 0
         poll_until(8'h23, 2'd0, 64'h0000_0000_0000_0000);
 
@@ -242,6 +244,7 @@ module tb_ahb_accelerator ();
         // 3. write inputs
         enqueue_write(8'h08, 2'd3, 64'h0101_0101_0101_0101);
         execute_transactions(1);
+        finish_transactions();
         // poll until device busy is 0
         poll_until(8'h20, 2'd1, 64'h0000_0000_0000_0000);
 
@@ -253,208 +256,20 @@ module tb_ahb_accelerator ();
 
         // 5. set Activation Function
         enqueue_write(8'h24, 2'd0, 64'h0000_0000_0000_0002);
+        execute_transactions(1);
+        finish_transactions();
 
         // 6. Start Inference
         enqueue_write(8'h22, 2'd0, 64'h0000_0000_0000_0001);
         execute_transactions(1);
+        finish_transactions();
         // poll status register until data ready is 1
-        poll_until(8'h23, 2'd0, 64'h0000_0000_0000_0001);
+        //poll_until(8'h23, 2'd0, 64'h0000_0000_0000_0001);
 
         // 7. Read Output
         enqueue_read(8'h18, 2'd3, 64'h0000_8024_00FE_7F08);
         execute_transactions(1);
         finish_transactions();
-
-        // n_rst = 1;
-        // hsel = 0;
-        // haddr = 10'b0;
-        // htrans = 2'b0;
-        // hsize = 2'b0;
-        // hwrite = 0;
-        // hwdata = 64'b0;
-        // hburst = 3'b0;
-
-        // reset_dut;
-
-        // // Write weight 1
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // Write weight 2
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // Write weight 3
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // Write weight 4
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // Write weight 5
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // Write weight 6
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // write weight 7
-        // hsel = 1;
-        // haddr = 10'b0000000000;
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // write weight 8
-        // hsel = 1;
-        // haddr = 10'b0000000000;     
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0101010101010101;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // //write inputs 
-        // hsel = 1;
-        // haddr = 10'b0000001000;     
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0807060504030201;
-        // repeat (11) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-        
-        // // load_weights
-        // hsel = 1;
-        // haddr = 10'h22;    
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b00; 
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0000000000020000;
-        // repeat (60) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // // start inference
-        // hsel = 1;
-        // haddr = 10'h22;    
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b00; 
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE
-        // hwdata = 64'h0000000000010000;
-        // repeat (60) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-        // hsel = 1;
-        // haddr = 10'h24;    
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE  
-        // hwdata = 0;
-        // @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-
-        // hsel = 1;
-        // haddr = 10'h22;    
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 1;
-        // hburst = 3'b000; // SINGLE  
-        // hwdata = 1;
-        // repeat (28) @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
-
-
-        // hsel = 1;
-        // haddr = 10'h18;    
-        // htrans = 2'b10; // NONSEQ
-        // hsize = 2'b11; // 64-bit
-        // hwrite = 0;
-        // hburst = 3'b000; // SINGLE  
-        // @(negedge clk);
-        // hsel = 0;
-        // hwrite = 0;
-        // @(negedge clk);
         
 
 

@@ -36,7 +36,7 @@ module controller_cdl #(
 );
    logic [63:0] in_bus_r;
    
-    typedef enum logic [4:0] {
+    typedef enum logic [5:0] {
         IDLE      = 0,
         LOAD_weight =1,   
         LOAD_input =2,
@@ -64,10 +64,12 @@ module controller_cdl #(
         Wait_4 = 24,
         Wait_5 = 25,
         Wait_6 = 26,
-        Send2Bias = 27,
-        Send2ACTV = 28,
-        Store_out =29,
-        DONE =30
+        Wait_7 = 27,
+        Wait_8 = 28,
+        Send2Bias = 29,
+        Send2ACTV = 30,
+        Store_out =31,
+        DONE =32
     } state_t;
     state_t current_state,next_state;
 
@@ -220,6 +222,12 @@ module controller_cdl #(
                 next_state = Wait_6;
             end
             Wait_6: begin
+                next_state = Wait_7;
+            end
+            Wait_7: begin
+                next_state = Wait_8;
+            end
+            Wait_8: begin
                 next_state = Send2Bias;
             end
             Send2Bias: begin
@@ -375,6 +383,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[7:0] = in_bus_r[7:0];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -384,6 +393,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[15:8] = in_bus_r[15:8];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -393,6 +403,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[23:16] = in_bus_r[23:16];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -402,6 +413,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[31:24] = in_bus_r[31:24];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;  
                 //in_num = in_count_r;
@@ -411,6 +423,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[39:32] = in_bus_r[39:32];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -420,6 +433,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[47:40] = in_bus_r[47:40];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -429,6 +443,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[55:48] = in_bus_r[55:48];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -438,12 +453,13 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[63:56] = in_bus_r[63:56];
                 operate_f = 1;
+                shift_enable = 1;
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
             end
-            Wait_1, Wait_2, Wait_3, Wait_4, Wait_5, Wait_6: begin
+            Wait_1, Wait_2, Wait_3, Wait_4, Wait_5, Wait_6,Wait_7,Wait_8: begin
                 design_busy = 1;
                 operate_f=1;
                 weight_num = weight_count_r;
@@ -459,14 +475,12 @@ module controller_cdl #(
             end
             Send2ACTV: begin
                 design_busy = 1;
-                out2bias =1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
             end
             Store_out: begin
                 design_busy = 1;
-                out2bias =1;
                 store_output=1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
