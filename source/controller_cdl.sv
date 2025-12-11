@@ -76,8 +76,7 @@ module controller_cdl #(
         Send2Bias = 36,
         Send2ACTV = 37,
         Store_out =38,
-        DONE =39,
-        Wait_data_ready =40
+        DONE =39
     } state_t;
     state_t current_state,next_state;
 
@@ -270,11 +269,8 @@ module controller_cdl #(
                     next_state = DONE;
             end
             DONE: begin
-                next_state = Wait_data_ready;
+                next_state = IDLE;
             end
-                Wait_data_ready: begin
-                 next_state = IDLE;
-                end
             default: begin
                  next_state = IDLE; // safe recovery
     end
@@ -481,7 +477,7 @@ module controller_cdl #(
                 in_bus=64'h0;
                 in_bus[55:48] = in_bus_r[55:48];
                 operate_f = 1;
-                shift_enable = 1;
+                shift_enable = 1; 
                 design_busy = 1;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
@@ -530,13 +526,6 @@ module controller_cdl #(
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
-            end
-                Wait_data_ready: begin
-                weight_num = weight_count_r;
-                //in_num = in_count_r;
-                in_num = 0;
-                systolic_out = sram_data;
-                data_ready =1;
             end
             default: begin
                 weight_num = weight_count_r;
