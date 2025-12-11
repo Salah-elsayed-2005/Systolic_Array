@@ -66,6 +66,7 @@ module tb_ahb_subordinate_cdl ();
     logic [2:0] actv_mode;
     logic store_weights;
     logic store_inputs;
+    logic data_read;
 
     string status;
 
@@ -93,7 +94,8 @@ module tb_ahb_subordinate_cdl ();
         .bias(bias),
         .actv_mode(actv_mode),
         .store_weights(store_weights),
-        .store_inputs(store_inputs)
+        .store_inputs(store_inputs),
+        .data_read(data_read)
     );
     // bus model connections
     ahb_model_updated #(

@@ -16,10 +16,13 @@ module tb_controller_cdl ();
     logic load_weights;
     logic store_weights, store_inputs;
     logic [63:0] weights,inputs;
+    logic data_read;
     // inputs from sram
     logic [1:0]sram_state;
     logic [63:0] sram_data;
 
+    //input from actv
+    logic [63:0]out_actv;
     // output to ahb
     logic data_ready;
     logic buffer_busy,design_busy;

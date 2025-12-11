@@ -23,6 +23,7 @@ module ahb_accelerator #(
     logic store_weights;
     logic store_inputs;
     logic data_ready;
+    logic data_read;
     logic buffer_busy;
     logic design_busy;
     logic [63:0] systolic_out;
@@ -83,6 +84,7 @@ module ahb_accelerator #(
         .store_weights(store_weights),
         .store_inputs(store_inputs),
         .data_ready(data_ready),
+        .data_read(data_read),
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
@@ -111,6 +113,7 @@ module ahb_accelerator #(
         .sram_state(sram_state),
         .sram_data(sram_data),
         .data_ready(data_ready),
+        .data_read(data_read),
         .buffer_busy(buffer_busy),
         .design_busy(design_busy),
         .systolic_out(systolic_out),
@@ -130,7 +133,8 @@ module ahb_accelerator #(
         /* verilator lint_on PINCONNECTEMPTY */
         .write_in_enable(write_in_enable),
         .write_w_enable(write_w_enable),
-        .store_output(store_output)
+        .store_output(store_output),
+        .out_actv(out_actv)
         
     );
 

@@ -27,7 +27,8 @@ module ahb_subordinate_cdl #(
     output logic [63:0] bias,
     output logic [2:0] actv_mode,
     output logic store_weights,
-    output logic store_inputs
+    output logic store_inputs,
+    output logic data_read
     
 );
     localparam IDLE = 2'b00;
@@ -325,6 +326,7 @@ module ahb_subordinate_cdl #(
     logic is_raw;
     logic [7:0] write_end, read_end;
     logic [7:0] base_addr_r, byte_offset_r, num_bytes_r, low_r;
+    logic data_read_next;
 
     always_comb begin : READ_LOGIC
         hrdata_next = 64'h0;
@@ -337,6 +339,7 @@ module ahb_subordinate_cdl #(
              !((read_end < haddr_reg) || (haddr > write_end));
 
         clear_err = 2'b00;
+        data_read_next = 1'b0;
 
         if (hsel && !hresp) begin
             if (htrans == NONSEQ || htrans == SEQ) begin
@@ -365,6 +368,7 @@ module ahb_subordinate_cdl #(
                                 2'd2: hrdata_next[low_r +: 32]  = output_reg[low_r +: 32];
                                 2'd3: hrdata_next[0     +: 64]  = output_reg[0     +: 64];
                             endcase
+                            data_read_next = 1'b1;
                             if (buffer_busy) r_hready = 0;
                         end
 
@@ -403,5 +407,14 @@ module ahb_subordinate_cdl #(
             end
         end
     end
+
+    always_ff @(posedge clk, negedge n_rst) begin : DATA_READ_REG
+        if(!n_rst) begin
+            data_read <= 1'b0;
+        end
+        else begin
+            data_read <= data_read_next;
+        end
+    end 
 
 endmodule

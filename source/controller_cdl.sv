@@ -12,9 +12,13 @@ module controller_cdl #(
     input logic load_weights,
     input logic store_weights, store_inputs,
     input logic [63:0] weights,inputs,
+    input logic data_read,
     // inputs from sram
     input logic [1:0]sram_state,
     input logic [63:0] sram_data,
+
+    //input from actv
+    input logic [63:0]out_actv,
 
     // output to ahb
     output logic data_ready,
@@ -76,7 +80,8 @@ module controller_cdl #(
         Send2Bias = 36,
         Send2ACTV = 37,
         Store_out =38,
-        DONE =39
+        DONE =39,
+        Wait_data_ready=40
     } state_t;
     state_t current_state,next_state;
 
@@ -269,7 +274,11 @@ module controller_cdl #(
                     next_state = DONE;
             end
             DONE: begin
-                next_state = IDLE;
+                next_state = Wait_data_ready;
+            end
+            Wait_data_ready: begin
+                if(data_read)
+                    next_state=IDLE;
             end
             default: begin
                  next_state = IDLE; // safe recovery
@@ -522,10 +531,16 @@ module controller_cdl #(
             end
             DONE: begin
                 data_ready =1;
-                systolic_out = sram_data;
                 weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
+            end
+            Wait_data_ready : begin 
+                weight_num = weight_count_r;
+                //in_num = in_count_r;
+                in_num = 0;
+                systolic_out=out_actv;
+                data_ready=1;
             end
             default: begin
                 weight_num = weight_count_r;
