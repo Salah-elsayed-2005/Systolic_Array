@@ -27,7 +27,7 @@ module tb_controller_cdl ();
     logic data_ready;
     logic buffer_busy,design_busy;
     logic [63:0] systolic_out;
-    logic weights_ready;
+    logic weight_ready;
     // output to sys
     logic [63:0] in_bus;
     logic hold_bias;
@@ -118,11 +118,12 @@ module tb_controller_cdl ();
             @(negedge clk);
         end
         load_weights = 0;
-
+        repeat(8) @(negedge clk);
         //start inference
         info =("Starting inference");
         start_inference = 1;
         sram_data = 64'hC0C1C2C3C4C5C6C7;
+        out_actv= 64'hD0D1D2D3D4D5D6D7;
         repeat (2) @(negedge clk);
         start_inference = 0;
         repeat (7) begin 
@@ -132,8 +133,8 @@ module tb_controller_cdl ();
         
 
         
-        repeat (10) @(negedge clk);
-
+        repeat (20) @(negedge clk);
+        data_read=1;
 
         $finish;
     end

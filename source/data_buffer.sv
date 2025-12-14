@@ -179,11 +179,11 @@ module data_buffer #(
             //num_bytes = 1<<hsize;
             
             write_w1_data = data[31:0];
-            address_w1[2:0] = weight_num;
+            address_w1[2:0] = 7-weight_num;
             write_w1_enable = 1;
 
             write_w2_data = data[63:32];
-            address_w2[2:0] = weight_num;
+            address_w2[2:0] = 7-weight_num;
             write_w2_enable = 1;
             sram_state = sram_w1_state;
 

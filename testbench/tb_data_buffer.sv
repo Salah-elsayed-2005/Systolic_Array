@@ -119,7 +119,7 @@ module tb_data_buffer ();
             repeat (2) @(negedge clk);
     
 
-        
+        //store output
         out_actv = 64'hE7E6E5E4E3E2E1E0;
         store_output = 1;
         repeat (10) @(negedge clk);

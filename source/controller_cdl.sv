@@ -313,26 +313,7 @@ module controller_cdl #(
          .rollover_flag() 
         /* verilator lint_on PINCONNECTEMPTY */
     );
-    // always_comb begin
-    //     weight_count_n = weight_count_r;
-    //     //in_count_n     = in_count_r;
-
-    // // ----- weight counter -----
-    //     if (sram_state==2 && (write_w_enable||read_w_enable)) begin
-    //         if (weight_count_r == 7)
-    //             weight_count_n = 0;
-    //         else
-    //             weight_count_n = weight_count_r + 1;
-    //     end
-
-    // // ----- input counter -----
-    // //    if (sram_state==2 && (write_in_enable||read_in_enable)) begin
-    // //        if (in_count_r == 7)
-    // //            in_count_n = 0;
-    // //        else
-    // //            in_count_n = in_count_r + 1;
-    // //    end
-    // end
+    
 
     
 
@@ -371,7 +352,7 @@ module controller_cdl #(
                 buffer_busy = 1;
                 design_busy = 1;
                 write_w_enable = 1;
-                weight_num = 7-weight_count_r;
+                weight_num = weight_count_r;
                 //in_num = in_count_r;
                 in_num = 0;
             end
